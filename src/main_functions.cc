@@ -1,0 +1,338 @@
+#include "main_functions.h" 
+
+#include <math.h>
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <esp_log.h>
+
+#include "model.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#include "tensorflow/lite/micro/micro_error_reporter.h"
+#include "tensorflow/lite/micro/micro_interpreter.h"
+
+#include <Ultrasonicsensor.h>
+#include "AnalogSensors.h"
+
+#include "AquaponicsStructs.h"
+
+static const char* HEATER = "Heater";
+static const char* AERATOR = "Aerator";
+static const char* FISHFEED = "FishFeed";
+static const char* WATERHEIGHT = "WaterHeight";
+static const char* TEMPERATUREVALUE = "Temperature";
+static const char* PHVALUE = "PH";
+static const char* DOVALUE = "DO";
+
+namespace {
+  tflite::ErrorReporter* error_reporter = nullptr;
+  const tflite::Model* model = nullptr;
+  tflite::MicroInterpreter* interpreter = nullptr;
+  TfLiteTensor* input = nullptr;
+  TfLiteTensor* output = nullptr;
+  constexpr int kTensorArenaSize = 2496; // 3 * 1024 2496 according to app
+  uint8_t tensor_arena[kTensorArenaSize];   // Set the size of Tensor arena
+}
+
+static DelayValues delays = { .heater_delay = 0, .aerator_delay = 9000,
+                              .peristalticPump_delay = 0, .watervalve_delay = 0,
+                              .fishfeed_delay = 0 };
+
+static LatestSensorValues sensors;
+
+// LOAD THE INPUT DATA TO THE INPUT TENSORS
+void load_data(float (&inputData)[10][3])
+{
+  // THIS FUNCTION WILL APPEND ALL THE VALUES OF inputData
+  // TO THE RIGHT INPUT TENSOR IN FLOAT FORM
+  int index = 0;
+  for (int i = 0; i < 10; ++i)
+  {
+    for (int j = 0; j < 3; ++j)
+    {
+      input->data.f[index] = static_cast<float>(inputData[i][j]);
+      ++index;
+    } 
+  }
+}
+
+// This function will run inference on our data
+// The output will be also in the input data
+void runInference(float (&inputData)[10][3])
+{
+  // Requires the pointer to input and output tensors
+  
+  // Run the model 10 times to get a 10 minute forecast
+  for (int i = 0; i < 10; i++)
+  {
+    load_data(inputData);
+    TfLiteStatus invoke_status = interpreter->Invoke();
+    if (invoke_status != kTfLiteOk) {
+      // if invoke failed just repeat the last values
+      output->data.f[0] = inputData[9][0];
+      output->data.f[1] = inputData[9][1];
+      output->data.f[2] = inputData[9][2];
+    }
+    // This will move the second element of the timeseries to the first
+    // and append the output values of the NN to the last element of the array
+    memmove((void*) &inputData[0][0], (void*) &inputData[1][0], 9 * 3 * sizeof(float));
+    memcpy((void*) &inputData[9][0], (void*) &output->data.f[0], 3 * sizeof(float));
+  }
+}
+
+void getScalerValues(float (&data)[10][3], ScalerValues &scaler) 
+{
+    // Temperature Mean
+    double sumTemp = 0.0;
+    for(int i = 0; i < 10; ++i) {
+        sumTemp += data[i][0];
+    }
+
+    // Temperature SD
+    double meanTemp = 0.0;
+    meanTemp = sumTemp / 10;
+    scaler.mean_Temp = meanTemp;
+
+    double standardDeviationTemp = 0.0;
+    for(int i = 0; i < 10; ++i) {
+        standardDeviationTemp += pow(data[i][0] - meanTemp, 2);
+    }
+
+    double sdTemp = sqrt(standardDeviationTemp / 10);
+    scaler.std_Temp = sdTemp;
+
+    // DO Mean
+    double sumDO = 0.0;
+    for(int i = 0; i < 10; ++i) {
+        sumDO += data[i][1];
+    }
+
+    // DO SD
+    double meanDO = 0.0;
+    meanDO = sumDO / 10;
+    scaler.mean_DO = meanDO;
+
+    double standardDeviationDO = 0.0;
+    for(int i = 0; i < 10; ++i) {
+        standardDeviationDO += pow(data[i][1] - meanDO, 2);
+    }
+
+    double sdDO = sqrt(standardDeviationDO / 10);
+    scaler.std_DO = sdDO;
+
+    // PH Mean
+    double sumPH = 0.0;
+    for(int i = 0; i < 10; ++i) {
+        sumPH += data[i][2];
+    }
+
+    //PH SD
+    double meanPH = 0.0;
+    meanPH = sumPH / 10;
+    scaler.mean_PH = meanPH;
+
+    double standardDeviationPH = 0.0;
+    for(int i = 0; i < 10; ++i) {
+        standardDeviationPH += (data[i][2] - meanPH) * (data[i][2] - meanPH);
+    }
+
+    double sdPH = sqrt(standardDeviationPH / 10);
+    scaler.std_PH = sdPH;
+}
+
+void standardScaler(float (&data)[10][3], ScalerValues &scaler)
+{
+    // Temperature Scaling
+    for(int i = 0; i < 10; ++i) {
+        float newValue = (data[i][0] - scaler.mean_Temp) / scaler.std_Temp;
+        if (isnan(newValue))
+        {
+          newValue = 0;
+        }
+        data[i][0] = newValue;
+    }
+
+    // DO Scaling
+    for(int i = 0; i < 10; ++i) {
+        float newValue = (data[i][1] - scaler.mean_DO) / scaler.std_DO;
+        if (isnan(newValue))
+        {
+          newValue = 0;
+        }
+        data[i][1] = newValue;
+    }
+
+    // PH Scaling
+    for(int i = 0; i < 10; ++i) {
+        float newValue = (data[i][2] - scaler.mean_PH) / scaler.std_PH;
+        if (isnan(newValue))
+        {
+          newValue = 0;
+        }
+        data[i][2] = newValue;
+    }
+}
+
+void inverseStandardScaler(float (&data)[10][3], ScalerValues &scaler)
+{
+    // Temperature Inversed Scaling
+    for(int i = 0; i < 10; ++i) {
+        float newValue = (data[i][0] * scaler.std_Temp) + scaler.mean_Temp;
+        data[i][0] = newValue;
+    }
+
+    // DO Inversed Scaling
+    for(int i = 0; i < 10; ++i) {
+        float newValue = (data[i][1] * scaler.std_DO) + scaler.mean_DO;
+        data[i][1] = newValue;
+    }
+
+    // DO Inversed Scaling
+    for(int i = 0; i < 10; ++i) {
+        float newValue = (data[i][2] * scaler.std_PH) + scaler.mean_PH;
+        data[i][2] = newValue;
+    }
+}
+
+void vHeater(void *params) 
+{
+  // Loop forever
+  while (1) {
+    // Blink
+    //digitalWrite(led_pin, HIGH);
+    ESP_LOGI(HEATER, "ON");
+    vTaskDelay( pdMS_TO_TICKS(delays.heater_delay) );
+    //digitalWrite(led_pin, LOW);
+    ESP_LOGI(HEATER, "OFF");
+    vTaskDelay( pdMS_TO_TICKS(10000 - delays.heater_delay));
+  }
+}
+
+void vAerator(void *params) 
+{
+  // Loop forever
+  while (1) {
+    // Blink
+    //digitalWrite(led_pin, HIGH);
+    ESP_LOGI(AERATOR, "ON");
+    vTaskDelay( pdMS_TO_TICKS( delays.aerator_delay ) );
+    //digitalWrite(led_pin, LOW);
+    ESP_LOGI(AERATOR, "OFF");
+    vTaskDelay( pdMS_TO_TICKS(10000 - delays.aerator_delay) );
+  }
+}
+
+void vFishFeed(void *params) 
+{
+  // Loop forever
+  while (1) {
+    // Blink
+    //digitalWrite(led_pin, HIGH);
+    ESP_LOGI(FISHFEED, "ON");
+    vTaskDelay( pdMS_TO_TICKS( delays.fishfeed_delay ) );
+    //digitalWrite(led_pin, LOW);
+    ESP_LOGI(FISHFEED, "OFF");
+    vTaskDelay( pdMS_TO_TICKS(10000 - delays.fishfeed_delay) );
+  }
+}
+
+void vMainTask(void* params)
+{
+  adc_calibration_init();
+
+  // ---------------------SETUP ESP-NN---------------------------------//
+  // Set up logging. Google style is to avoid globals or statics because of
+  // lifetime uncertainty, but since this has a trivial destructor it's okay.
+  // NOLINTNEXTLINE(runtime-global-variables)
+  static tflite::MicroErrorReporter micro_error_reporter;
+  error_reporter = &micro_error_reporter;
+
+  // Map the model into a usable data structure. This doesn't involve any
+  // copying or parsing, it's a very lightweight operation.
+  model = tflite::GetModel(g_model);
+  if (model->version() != TFLITE_SCHEMA_VERSION) {
+    TF_LITE_REPORT_ERROR(error_reporter,
+                        "Model provided is schema version %d not equal "
+                        "to supported version %d.",
+                        model->version(), TFLITE_SCHEMA_VERSION);
+    return;
+  }
+
+  // This pulls in all the operation implementations we need.
+  // NOLINTNEXTLINE(runtime-global-variables)
+  //static tflite::AllOpsResolver resolver;
+
+  tflite::MicroMutableOpResolver<4> micro_op_resolver;
+  micro_op_resolver.AddQuantize();
+  micro_op_resolver.AddReshape();
+  micro_op_resolver.AddFullyConnected();
+  micro_op_resolver.AddDequantize();
+
+
+  // Build an interpreter to run the model with.
+  static tflite::MicroInterpreter static_interpreter(
+      model, micro_op_resolver, tensor_arena, kTensorArenaSize, error_reporter);
+  interpreter = &static_interpreter;
+
+  // Allocate memory from the tensor_arena for the model's tensors.
+  TfLiteStatus allocate_status = interpreter->AllocateTensors();
+  if (allocate_status != kTfLiteOk) {
+    TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() failed");
+    return;
+  }
+
+  // Obtain pointers to the model's input and output tensors.
+  input = interpreter->input(0);
+  output = interpreter->output(0);
+  // ---------------------SETUP ESP-NN---------------------------------//
+
+  uint8_t iterationCount = 0;
+    while(1)
+    {
+      sensors.water_height = get_water_height();
+      sensors.temperature_value[iterationCount] = read_Temp_sensorValue();
+      sensors.pH_value[iterationCount] = read_PH_sensorValue();
+      sensors.dissolveOxygen_value[iterationCount] = read_DO_sensorValue( (uint32_t) sensors.temperature_value[iterationCount] );
+
+      ESP_LOGI(WATERHEIGHT, "%d", sensors.water_height);
+      ESP_LOGI(TEMPERATUREVALUE, "%f [%d]", sensors.temperature_value[iterationCount], iterationCount);
+      ESP_LOGI(DOVALUE, "%f [%d]", sensors.dissolveOxygen_value[iterationCount], iterationCount);
+      ESP_LOGI(PHVALUE, "%f [%d]", sensors.pH_value[iterationCount], iterationCount);
+
+
+      if (iterationCount == 9)
+      {
+        // Do the inference here
+        float data[10][3];
+
+        for (int i = 0; i < 10; i++)
+        {
+          data[i][0] = sensors.temperature_value[i];
+          data[i][1] = sensors.dissolveOxygen_value[i];
+          data[i][2] = sensors.pH_value[i];
+        }
+
+        //Do the inference by doing a standard scaler and outputing the values to data
+        ScalerValues scaler;
+        getScalerValues( data, scaler );
+        standardScaler( data, scaler );
+        runInference( data );
+        inverseStandardScaler( data, scaler );
+
+        
+
+      }
+
+      delays.heater_delay = 5000;
+      delays.aerator_delay = 2000;
+      delays.watervalve_delay = 1000;
+      vTaskDelay( pdMS_TO_TICKS(1000) );
+      
+      iterationCount++;
+
+      if (iterationCount > 9)
+      {
+        iterationCount = 0;
+      }
+    }
+}
