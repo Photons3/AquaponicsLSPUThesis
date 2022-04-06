@@ -15,7 +15,9 @@
         "xutility": "cpp",
         "new": "cpp",
         "cmath": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "time.h": "c",
+        "random": "cpp"
     },
     "idf.portWin": "COM3",
     "idf.openOcdConfigs": [

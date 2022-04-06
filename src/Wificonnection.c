@@ -9,6 +9,9 @@
 #include <time.h>
 #include "lwip/apps/sntp.h"
 
+#include "esp_event.h"
+#include "esp_netif.h"
+
 #include "RTC1302.h"
 
 static const char* WIFI = "WIFI";

@@ -13,6 +13,8 @@ extern void vFishFeed(void *params);
 
 extern void vAerator(void *params);
 
+extern void vPeristalticPump(void *params);
+
 #ifdef __cplusplus
 }
 #endif

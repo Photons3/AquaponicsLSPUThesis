@@ -11,18 +11,13 @@
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 
-#include <Ultrasonicsensor.h>
+#include "Ultrasonicsensor.h"
 #include "AnalogSensors.h"
-
 #include "AquaponicsStructs.h"
+#include "HiveMQBroker.h"
 
-static const char* HEATER = "Heater";
-static const char* AERATOR = "Aerator";
-static const char* FISHFEED = "FishFeed";
-static const char* WATERHEIGHT = "WaterHeight";
-static const char* TEMPERATUREVALUE = "Temperature";
-static const char* PHVALUE = "PH";
-static const char* DOVALUE = "DO";
+static const char* CONTROLS = "CONTROLS";
+static const char* SENSORS = "SENSORS";
 
 namespace {
   tflite::ErrorReporter* error_reporter = nullptr;
@@ -196,42 +191,60 @@ void inverseStandardScaler(float (&data)[10][3], ScalerValues &scaler)
 
 void vHeater(void *params) 
 {
+  vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
   while (1) {
     // Blink
     //digitalWrite(led_pin, HIGH);
-    ESP_LOGI(HEATER, "ON");
+    ESP_LOGI(CONTROLS, "HEATER ON");
     vTaskDelay( pdMS_TO_TICKS(delays.heater_delay) );
     //digitalWrite(led_pin, LOW);
-    ESP_LOGI(HEATER, "OFF");
+    ESP_LOGI(CONTROLS, "HEATER OFF");
     vTaskDelay( pdMS_TO_TICKS(10000 - delays.heater_delay));
+  }
+}
+
+void vPeristalticPump(void *params)
+{
+  vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
+  // Loop forever
+  while (1) {
+    // Blink
+    //digitalWrite(led_pin, HIGH);
+    ESP_LOGI(CONTROLS, "PERISTALTIC PUMP ON");
+    vTaskDelay( pdMS_TO_TICKS(delays.peristalticPump_delay) );
+    //digitalWrite(led_pin, LOW);
+    ESP_LOGI(CONTROLS, "PERISTALTIC PUMP OFF");
+    vTaskDelay( pdMS_TO_TICKS(10000 - delays.peristalticPump_delay));
   }
 }
 
 void vAerator(void *params) 
 {
+  vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
   while (1) {
     // Blink
     //digitalWrite(led_pin, HIGH);
-    ESP_LOGI(AERATOR, "ON");
+    ESP_LOGI(CONTROLS, "AERATOR ON");
     vTaskDelay( pdMS_TO_TICKS( delays.aerator_delay ) );
     //digitalWrite(led_pin, LOW);
-    ESP_LOGI(AERATOR, "OFF");
+    ESP_LOGI(CONTROLS, "AERATOR OFF");
     vTaskDelay( pdMS_TO_TICKS(10000 - delays.aerator_delay) );
   }
 }
 
 void vFishFeed(void *params) 
 {
+  vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
   while (1) {
     // Blink
     //digitalWrite(led_pin, HIGH);
-    ESP_LOGI(FISHFEED, "ON");
+    ESP_LOGI(CONTROLS, "FISHFEED ON");
     vTaskDelay( pdMS_TO_TICKS( delays.fishfeed_delay ) );
     //digitalWrite(led_pin, LOW);
-    ESP_LOGI(FISHFEED, "OFF");
+    ESP_LOGI(CONTROLS, "FISHFEED OFF");
     vTaskDelay( pdMS_TO_TICKS(10000 - delays.fishfeed_delay) );
   }
 }
@@ -293,11 +306,23 @@ void vMainTask(void* params)
       sensors.temperature_value[iterationCount] = read_Temp_sensorValue();
       sensors.pH_value[iterationCount] = read_PH_sensorValue();
       sensors.dissolveOxygen_value[iterationCount] = read_DO_sensorValue( (uint32_t) sensors.temperature_value[iterationCount] );
+      
+      char payload[75];
+      memset(payload, '\0', 75 - 1);
+      sprintf(payload, "{\"TEMP\": %f, \"DO\": %f, \"PH\": %f, \"WH\": %d}",
+                sensors.temperature_value[iterationCount],
+                sensors.dissolveOxygen_value[iterationCount],
+                sensors.pH_value[iterationCount],
+                sensors.water_height
+                );
 
-      ESP_LOGI(WATERHEIGHT, "%d", sensors.water_height);
-      ESP_LOGI(TEMPERATUREVALUE, "%f [%d]", sensors.temperature_value[iterationCount], iterationCount);
-      ESP_LOGI(DOVALUE, "%f [%d]", sensors.dissolveOxygen_value[iterationCount], iterationCount);
-      ESP_LOGI(PHVALUE, "%f [%d]", sensors.pH_value[iterationCount], iterationCount);
+      const uint8_t payloadLen = strlen(payload);
+      
+      esp_mqtt_client_enqueue(client, "/aquaponics/lspu/sensors", payload, payloadLen, 2, 0, true);
+      ESP_LOGI(SENSORS, "Waterheight: %d", sensors.water_height);
+      ESP_LOGI(SENSORS, "Temperature[%d]: %f", iterationCount, sensors.temperature_value[iterationCount]);
+      ESP_LOGI(SENSORS, "Dissolved Oxygen[%d]: %f", iterationCount, sensors.dissolveOxygen_value[iterationCount]);
+      ESP_LOGI(SENSORS, "PH[%d]: %f", iterationCount, sensors.pH_value[iterationCount]);
 
 
       if (iterationCount == 9)
@@ -319,7 +344,7 @@ void vMainTask(void* params)
         runInference( data );
         inverseStandardScaler( data, scaler );
 
-        
+
 
       }
 
