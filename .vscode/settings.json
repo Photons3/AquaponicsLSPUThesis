@@ -17,7 +17,9 @@
         "cmath": "cpp",
         "complex": "cpp",
         "time.h": "c",
-        "random": "cpp"
+        "random": "cpp",
+        "cstdio": "cpp",
+        "cstdint": "cpp"
     },
     "idf.portWin": "COM3",
     "idf.openOcdConfigs": [

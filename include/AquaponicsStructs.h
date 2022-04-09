@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include <cstdint>
+#include <cstdio>
 
 struct DelayValues
 {
@@ -39,6 +39,18 @@ struct ScalerValues
     float std_DO;
     float mean_PH;
     float std_PH;
+};
+
+struct ConfigurationValues
+{
+    //"TempLow":"18","TempHigh":"25","PhLow":"6","PhHigh":"7","DOLow":"4","DOHigh":"5","FishFreq":"2" FORMAT
+    float tempLow = 17.0f;
+    float tempHigh = 33.0f;
+    float phLow = 5.5f;
+    float phHigh = 8.0f;
+    float doLow = 10.0f;
+    float doHigh = 40.0f;
+    uint8_t fishFreq = 3;
 };
 
 

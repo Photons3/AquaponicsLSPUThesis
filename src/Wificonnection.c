@@ -23,7 +23,7 @@ static void initialize_sntp(void)
 {
     ESP_LOGI(WIFI, "Initializing SNTP");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "ntp.pagasa.dost.gov.ph");
+    sntp_setservername(0, "time.google.com");
     sntp_init();
 }
 

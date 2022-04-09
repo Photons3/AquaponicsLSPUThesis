@@ -305,8 +305,9 @@ void vMainTask(void* params)
       sensors.water_height = get_water_height();
       sensors.temperature_value[iterationCount] = read_Temp_sensorValue();
       sensors.pH_value[iterationCount] = read_PH_sensorValue();
-      sensors.dissolveOxygen_value[iterationCount] = read_DO_sensorValue( (uint32_t) sensors.temperature_value[iterationCount] );
-      
+      sensors.dissolveOxygen_value[iterationCount] = read_DO_sensorValue( (uint32_t) sensors.temperature_value[iterationCount] ) / 1000;
+
+      //SEND VALUES TO HIVEMQ      
       char payload[75];
       memset(payload, '\0', 75 - 1);
       sprintf(payload, "{\"TEMP\": %f, \"DO\": %f, \"PH\": %f, \"WH\": %d}",
@@ -315,10 +316,9 @@ void vMainTask(void* params)
                 sensors.pH_value[iterationCount],
                 sensors.water_height
                 );
-
       const uint8_t payloadLen = strlen(payload);
-      
       esp_mqtt_client_enqueue(client, "/aquaponics/lspu/sensors", payload, payloadLen, 2, 0, true);
+
       ESP_LOGI(SENSORS, "Waterheight: %d", sensors.water_height);
       ESP_LOGI(SENSORS, "Temperature[%d]: %f", iterationCount, sensors.temperature_value[iterationCount]);
       ESP_LOGI(SENSORS, "Dissolved Oxygen[%d]: %f", iterationCount, sensors.dissolveOxygen_value[iterationCount]);
@@ -344,8 +344,16 @@ void vMainTask(void* params)
         runInference( data );
         inverseStandardScaler( data, scaler );
 
-
-
+        // SEND PREDICTIONS TO HIVEMQ
+        char predictionPayload[400];
+        memset(predictionPayload, '\0', 400 - 1);
+        sprintf(predictionPayload, "{\"temperature\": [ %f, %f, %f, %f, %f, %f, %f, %f, %f, %f], \"DOLevel\": [ %f, %f, %f, %f, %f, %f, %f, %f, %f, %f], \"pHLevel\": [ %f, %f, %f, %f, %f, %f, %f, %f, %f, %f]}",
+                data[0][0], data[1][0], data[2][0], data[3][0], data[4][0], data[5][0], data[6][0], data[7][0], data[8][0], data[9][0],
+                data[0][1], data[1][1], data[2][1], data[3][1], data[4][1], data[5][1], data[6][1], data[7][1], data[8][1], data[9][1],
+                data[0][2], data[1][2], data[2][2], data[3][2], data[4][2], data[5][2], data[6][2], data[7][2], data[8][2], data[9][2]
+                );
+        const uint8_t predictionPayloadLen = strlen(&(predictionPayload[250]));
+        esp_mqtt_client_enqueue(client, "/aquaponics/lspu/predictions", predictionPayload, 250 + predictionPayloadLen, 2, 0, true);
       }
 
       delays.heater_delay = 5000;

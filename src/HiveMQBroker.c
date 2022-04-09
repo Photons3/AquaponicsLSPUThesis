@@ -1,4 +1,5 @@
 #include "HiveMQBroker.h"
+//#include "AquaponicsStructs.h"
 
 extern const uint8_t hivemq_client_cert_pem_start[]   asm("_binary_hivemq_client_cert_pem_start");
 extern const uint8_t hivemq_client_cert_pem_end[]   asm("_binary_hivemq_client_cert_io_pem_end");
@@ -34,6 +35,16 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
         printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
         printf("DATA=%.*s\r\n", event->data_len, event->data);
+        char* configMessage = (char*)malloc(event->data_len);
+        memcpy(configMessage, event->data, event->data_len);
+        configMessage[event->data_len] = '\0';
+        ESP_LOGI(TAG, "Delegate Message Payload: %s", configMessage);
+        if (strcmp(event->topic, "/aquaponics/lspu/configuration") == 0)
+        {
+            //"TempLow":"18","TempHigh":"25","PhLow":"6","PhHigh":"7","DOLow":"4","DOHigh":"5","FishFreq":"2" FORMAT
+            // sscanf(configMessage, "\"TempLow\":\"%f\",\"TempHigh\":\"%f\",\"PhLow\":\"%f\",\"PhHigh\":\"%f\",\"DOLow\":\"%f\",\"DOHigh\":\"%f\",\"FishFreq\":\"%d\"",
+            // );
+        }
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
