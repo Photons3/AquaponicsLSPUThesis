@@ -20,7 +20,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
     
-    wifi_init();
+    wifi_init_sta();
     obtain_time();
     mqtt_app_start();
     

@@ -9,7 +9,7 @@ extern "C" {
 
 void obtain_time(void);
 
-void wifi_init(void);
+void wifi_init_sta(void);
 
 #ifdef __cplusplus
 }
