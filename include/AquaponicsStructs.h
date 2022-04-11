@@ -24,11 +24,11 @@ struct LatestSensorValues
     uint32_t water_height = 10;
 };
 
-struct ControlsCoefficients
+struct ForecastedValue
 {
-    float heaterCoef[3];
-    float aeratorCoef[3];
-    float peristalticPumpCoef[3];
+    float temperature;
+    float DO;
+    float PH;
 };
 
 struct ScalerValues

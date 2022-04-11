@@ -4,6 +4,7 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "driver/gpio.h"
 #include <esp_log.h>
 
 #include "model.h"
@@ -190,15 +191,28 @@ void inverseStandardScaler(float (&data)[10][3], ScalerValues &scaler)
 }
 
 void vHeater(void *params) 
-{
+{ 
+  //zero-initialize the config structure.
+    gpio_config_t io_conf = {};
+    //disable interrupt
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    //set as output mode
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    //bit mask of the pins that you want to set,e.g.GPIO18/19
+    io_conf.pin_bit_mask = GPIO_NUM_21;
+    //disable pull-down mode
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    //disable pull-up mode
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    //configure GPIO with the given settings
+    gpio_config(&io_conf);
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
   while (1) {
-    // Blink
-    //digitalWrite(led_pin, HIGH);
+    gpio_set_level(GPIO_NUM_21, 1);
     ESP_LOGI(CONTROLS, "HEATER ON");
     vTaskDelay( pdMS_TO_TICKS(delays.heater_delay) );
-    //digitalWrite(led_pin, LOW);
+    gpio_set_level(GPIO_NUM_21, 0);
     ESP_LOGI(CONTROLS, "HEATER OFF");
     vTaskDelay( pdMS_TO_TICKS(10000 - delays.heater_delay));
   }
@@ -210,7 +224,7 @@ void vPeristalticPump(void *params)
   // Loop forever
   while (1) {
     // Blink
-    //digitalWrite(led_pin, HIGH);
+      //digitalWrite(led_pin, HIGH);
     ESP_LOGI(CONTROLS, "PERISTALTIC PUMP ON");
     vTaskDelay( pdMS_TO_TICKS(delays.peristalticPump_delay) );
     //digitalWrite(led_pin, LOW);

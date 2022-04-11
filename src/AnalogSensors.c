@@ -34,7 +34,7 @@ static const ds18x20_addr_t SENSOR_ADDR = 0x0701215cb8cf4128;
 static const float VoltageDividerMultipler = 17 / 6; // 120K+220K/220K
 
 //ADC Channels
-#define DOSensorPin          ADC1_CHANNEL_6      /*!< ADC1 channel 2 is GPIO34 */
+#define DOSensorPin          ADC1_CHANNEL_6      /*!< ADC1 channel 6 is GPIO34 */
 #define pHSensorPin          ADC1_CHANNEL_7      /*!< ADC1 channel 7 is GPIO35 */
 //#define tempSensorPin        ADC1_CHANNEL_3      /*!< ADC1 channel 3 is GPIO39 */
 
@@ -134,11 +134,10 @@ float read_DO_sensorValue(uint32_t temperature_c)
 
     // This formula comes from wiki of PH sensor
     voltage = VoltageDividerMultipler * esp_adc_cal_raw_to_voltage(adc_raw[1], &adc1_chars);
-    dissolvedOxygenValue = 0.0035 * voltage + OFFSET_PH_SENSOR;
-    //ESP_LOGI(TAG_CH[0][0], "PH Value: %f", pHValue);
 
     uint16_t V_saturation = (int16_t)((int8_t)temperature_c - CAL2_T) * ((uint16_t)CAL1_V - CAL2_V) / ((uint8_t)CAL1_T - CAL2_T) + CAL2_V;
-    return (voltage * DO_Table[temperature_c] / V_saturation);
+    
+    dissolvedOxygenValue = (voltage * DO_Table[temperature_c] / V_saturation);
 
     if ((dissolvedOxygenValue < 0))
     {
