@@ -2,21 +2,22 @@
 
 #include <math.h>
 
+#include <esp_log.h>
+#include "driver/gpio.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include "driver/gpio.h"
-#include <esp_log.h>
 
 #include "model.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 
-#include "Ultrasonicsensor.h"
 #include "AnalogSensors.h"
 #include "AquaponicsStructs.h"
-#include "HiveMQBroker.h"
 #include "ConfigurationHelperCxx.h"
+#include "HiveMQBroker.h"
+#include "RTC1302.h"
+#include "Ultrasonicsensor.h"
 
 static const char* CONTROLS = "CONTROLS";
 static const char* SENSORS = "SENSORS";
@@ -31,8 +32,9 @@ namespace {
   uint8_t tensor_arena[kTensorArenaSize];   // Set the size of Tensor arena
 }
 
-DelayValues delays;
-ForecastedValue forecast;
+static DelayValues delays;
+static ForecastedValue forecast;
+static struct tm currentTime;
 
 static LatestSensorValues sensors;
 
@@ -234,15 +236,19 @@ static void getMedianValues(float (&data)[10][3], ForecastedValue &forecast)
 
 void vHeater(void *params) 
 { 
+  gpio_pad_select_gpio(GPIO_NUM_21);
+  gpio_set_direction (GPIO_NUM_21,GPIO_MODE_OUTPUT);  
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
   while (1) {
+    uint32_t vDelay = delays.heater_delay;
     gpio_set_level(GPIO_NUM_21, 1);
-    ESP_LOGI(CONTROLS, "HEATER ON: %ds", delays.heater_delay);
-    vTaskDelay( pdMS_TO_TICKS(delays.heater_delay) );
+    ESP_LOGI(CONTROLS, "HEATER ON: %ds", vDelay);
+    vTaskDelay( pdMS_TO_TICKS(vDelay) );
+
     gpio_set_level(GPIO_NUM_21, 0);
     ESP_LOGI(CONTROLS, "HEATER OFF");
-    vTaskDelay( pdMS_TO_TICKS(10000 - delays.heater_delay));
+    vTaskDelay( pdMS_TO_TICKS(10000 - vDelay));
   }
 }
 
@@ -252,10 +258,10 @@ void vPeristalticPump(void *params)
   // Loop forever
   while (1) {
     // Blink
-      //digitalWrite(led_pin, HIGH);
+
     ESP_LOGI(CONTROLS, "PERISTALTIC PUMP ON: %ds", delays.peristalticPump_delay);
     vTaskDelay( pdMS_TO_TICKS(delays.peristalticPump_delay) );
-    //digitalWrite(led_pin, LOW);
+
     ESP_LOGI(CONTROLS, "PERISTALTIC PUMP OFF");
     vTaskDelay( pdMS_TO_TICKS(10000 - delays.peristalticPump_delay));
   }
@@ -263,24 +269,41 @@ void vPeristalticPump(void *params)
 
 void vAerator(void *params) 
 {
+  gpio_set_level(GPIO_NUM_3, 1);
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
   while (1) {
     // Blink
-    //digitalWrite(led_pin, HIGH);
-    ESP_LOGI(CONTROLS, "AERATOR ON");
-    vTaskDelay( pdMS_TO_TICKS( delays.aerator_delay ) );
-    //digitalWrite(led_pin, LOW);
+    uint32_t vDelay = delays.aerator_delay;
+    gpio_set_level(GPIO_NUM_3, 1);
+    ESP_LOGI(CONTROLS, "AERATOR ON: %ds", vDelay);
+    vTaskDelay( pdMS_TO_TICKS( vDelay ) );
+    
+    gpio_set_level(GPIO_NUM_3, 0);
     ESP_LOGI(CONTROLS, "AERATOR OFF");
-    vTaskDelay( pdMS_TO_TICKS(10000 - delays.aerator_delay) );
+    vTaskDelay( pdMS_TO_TICKS(10000 - vDelay) );
   }
 }
 
 void vFishFeed(void *params) 
 {
+
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
+  int lastFeedTime = 0;
+  uint8_t fishFreq;
+  uint8_t feedFreq;
+  int nextFeedTime;
   while (1) {
+    fishFreq = configValues.fishFreq;
+    feedFreq = ceil(24/fishFreq);
+    nextFeedTime = lastFeedTime + feedFreq;
+    //Compensate for 24 hours
+    if (((currentTime.tm_hour < lastFeedTime) && (currentTime.tm_hour + 24) >= nextFeedTime) || (currentTime.tm_hour >= nextFeedTime))
+    {
+      //Open the FishFeeder
+      lastFeedTime = currentTime.tm_hour;
+    }
     // Blink
     //digitalWrite(led_pin, HIGH);
     ESP_LOGI(CONTROLS, "FISHFEED ON: %ds", delays.fishfeed_delay);
@@ -345,6 +368,7 @@ void vMainTask(void* params)
   uint8_t iterationCount = 0;
   while(1)
   {
+    get_time_from_RTC(&currentTime);
     sensors.water_height = get_water_height();
     sensors.temperature_value[iterationCount] = read_Temp_sensorValue();
     sensors.pH_value[iterationCount] = read_PH_sensorValue();
@@ -360,7 +384,7 @@ void vMainTask(void* params)
               sensors.water_height
               );
     const uint8_t payloadLen = strlen(payload);
-    esp_mqtt_client_enqueue(client, "/aquaponics/lspu/sensors", payload, payloadLen, 2, 0, true);
+    esp_mqtt_client_enqueue(client, "/aquaponics/lspu/sensors", payload, payloadLen, 0, 0, true);
 
     ESP_LOGI(SENSORS, "Waterheight: %d", sensors.water_height);
     ESP_LOGI(SENSORS, "Temperature[%d]: %f", iterationCount, sensors.temperature_value[iterationCount]);
@@ -399,7 +423,7 @@ void vMainTask(void* params)
               data[0][2], data[1][2], data[2][2], data[3][2], data[4][2], data[5][2], data[6][2], data[7][2], data[8][2], data[9][2]
               );
       const uint8_t predictionPayloadLen = strlen(&(predictionPayload[250]));
-      esp_mqtt_client_enqueue(client, "/aquaponics/lspu/predictions", predictionPayload, 250 + predictionPayloadLen, 2, 0, true);
+      esp_mqtt_client_enqueue(client, "/aquaponics/lspu/predictions", predictionPayload, 250 + predictionPayloadLen, 0, 0, true);
     }
 
     vTaskDelay( pdMS_TO_TICKS(1000) );
