@@ -1,6 +1,7 @@
 #include "main_functions.h" 
 
 #include <math.h>
+#include <bits/stdc++.h>
 
 #include <esp_log.h>
 #include "driver/gpio.h"
@@ -202,6 +203,7 @@ static void getMedianValues(float (&data)[10][3], ForecastedValue &forecast)
       temperature[i] = data[i][0];
     }
     int size = sizeof(temperature)/sizeof(temperature[0]);
+    std::sort(temperature, temperature+size);
     float tempForecast = (float)(temperature[(size-1)/2] + temperature[size/2])/2.0;
 
     forecast.temperature = tempForecast;
@@ -215,6 +217,7 @@ static void getMedianValues(float (&data)[10][3], ForecastedValue &forecast)
       DO[i] = data[i][1];
     }
     int size = sizeof(DO)/sizeof(DO[0]);
+    std::sort(DO, DO+size);
     float DOForecast = (float)(DO[(size-1)/2] + DO[size/2])/2.0;
 
     forecast.DO = DOForecast;
@@ -228,6 +231,7 @@ static void getMedianValues(float (&data)[10][3], ForecastedValue &forecast)
       PH[i] = data[i][1];
     }
     int size = sizeof(PH)/sizeof(PH[0]);
+    std::sort(PH, PH+size);
     float PHForecast = (float)(PH[(size-1)/2] + PH[size/2])/2.0;
 
     forecast.PH = PHForecast;
