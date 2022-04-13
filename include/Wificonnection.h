@@ -7,9 +7,9 @@
 extern "C" {
 #endif
 
-void obtain_time(void);
+extern void obtain_time(void);
 
-void wifi_init_sta(void);
+extern void wifi_init_sta(void);
 
 #ifdef __cplusplus
 }

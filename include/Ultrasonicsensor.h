@@ -13,7 +13,7 @@ extern "C" {
 
 //void ultrasonic_test(void *pvParameters);
 
-uint32_t get_water_height();
+extern uint32_t get_water_height();
 
 #ifdef __cplusplus
 }

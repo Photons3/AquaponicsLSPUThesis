@@ -16,6 +16,7 @@
 #include "AnalogSensors.h"
 #include "AquaponicsStructs.h"
 #include "HiveMQBroker.h"
+#include "ConfigurationHelperCxx.h"
 
 static const char* CONTROLS = "CONTROLS";
 static const char* SENSORS = "SENSORS";
@@ -30,14 +31,13 @@ namespace {
   uint8_t tensor_arena[kTensorArenaSize];   // Set the size of Tensor arena
 }
 
-static DelayValues delays = { .heater_delay = 0, .aerator_delay = 9000,
-                              .peristalticPump_delay = 0, .watervalve_delay = 0,
-                              .fishfeed_delay = 0 };
+DelayValues delays;
+ForecastedValue forecast;
 
 static LatestSensorValues sensors;
 
 // LOAD THE INPUT DATA TO THE INPUT TENSORS
-void load_data(float (&inputData)[10][3])
+static void load_data(float (&inputData)[10][3])
 {
   // THIS FUNCTION WILL APPEND ALL THE VALUES OF inputData
   // TO THE RIGHT INPUT TENSOR IN FLOAT FORM
@@ -54,7 +54,7 @@ void load_data(float (&inputData)[10][3])
 
 // This function will run inference on our data
 // The output will be also in the input data
-void runInference(float (&inputData)[10][3])
+static void runInference(float (&inputData)[10][3])
 {
   // Requires the pointer to input and output tensors
   
@@ -76,7 +76,7 @@ void runInference(float (&inputData)[10][3])
   }
 }
 
-void getScalerValues(float (&data)[10][3], ScalerValues &scaler) 
+static void getScalerValues(float (&data)[10][3], ScalerValues &scaler) 
 {
     // Temperature Mean
     double sumTemp = 0.0;
@@ -136,7 +136,7 @@ void getScalerValues(float (&data)[10][3], ScalerValues &scaler)
     scaler.std_PH = sdPH;
 }
 
-void standardScaler(float (&data)[10][3], ScalerValues &scaler)
+static void standardScaler(float (&data)[10][3], ScalerValues &scaler)
 {
     // Temperature Scaling
     for(int i = 0; i < 10; ++i) {
@@ -169,7 +169,7 @@ void standardScaler(float (&data)[10][3], ScalerValues &scaler)
     }
 }
 
-void inverseStandardScaler(float (&data)[10][3], ScalerValues &scaler)
+static void inverseStandardScaler(float (&data)[10][3], ScalerValues &scaler)
 {
     // Temperature Inversed Scaling
     for(int i = 0; i < 10; ++i) {
@@ -190,27 +190,55 @@ void inverseStandardScaler(float (&data)[10][3], ScalerValues &scaler)
     }
 }
 
+static void getMedianValues(float (&data)[10][3], ForecastedValue &forecast)
+{
+  // TEMPERATURE
+  {
+    float temperature[10];
+    for (int i = 0; i < 10; i++)
+    {
+      temperature[i] = data[i][0];
+    }
+    int size = sizeof(temperature)/sizeof(temperature[0]);
+    float tempForecast = (float)(temperature[(size-1)/2] + temperature[size/2])/2.0;
+
+    forecast.temperature = tempForecast;
+  }
+
+  // DO
+  {
+    float DO[10];
+    for (int i = 0; i < 10; i++)
+    {
+      DO[i] = data[i][1];
+    }
+    int size = sizeof(DO)/sizeof(DO[0]);
+    float DOForecast = (float)(DO[(size-1)/2] + DO[size/2])/2.0;
+
+    forecast.DO = DOForecast;
+  }
+
+  // PH
+  {
+    float PH[10];
+    for (int i = 0; i < 10; i++)
+    {
+      PH[i] = data[i][1];
+    }
+    int size = sizeof(PH)/sizeof(PH[0]);
+    float PHForecast = (float)(PH[(size-1)/2] + PH[size/2])/2.0;
+
+    forecast.PH = PHForecast;
+  }
+}
+
 void vHeater(void *params) 
 { 
-  //zero-initialize the config structure.
-    gpio_config_t io_conf = {};
-    //disable interrupt
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    //set as output mode
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    //bit mask of the pins that you want to set,e.g.GPIO18/19
-    io_conf.pin_bit_mask = GPIO_NUM_21;
-    //disable pull-down mode
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    //disable pull-up mode
-    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-    //configure GPIO with the given settings
-    gpio_config(&io_conf);
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
   while (1) {
     gpio_set_level(GPIO_NUM_21, 1);
-    ESP_LOGI(CONTROLS, "HEATER ON");
+    ESP_LOGI(CONTROLS, "HEATER ON: %ds", delays.heater_delay);
     vTaskDelay( pdMS_TO_TICKS(delays.heater_delay) );
     gpio_set_level(GPIO_NUM_21, 0);
     ESP_LOGI(CONTROLS, "HEATER OFF");
@@ -225,7 +253,7 @@ void vPeristalticPump(void *params)
   while (1) {
     // Blink
       //digitalWrite(led_pin, HIGH);
-    ESP_LOGI(CONTROLS, "PERISTALTIC PUMP ON");
+    ESP_LOGI(CONTROLS, "PERISTALTIC PUMP ON: %ds", delays.peristalticPump_delay);
     vTaskDelay( pdMS_TO_TICKS(delays.peristalticPump_delay) );
     //digitalWrite(led_pin, LOW);
     ESP_LOGI(CONTROLS, "PERISTALTIC PUMP OFF");
@@ -255,7 +283,7 @@ void vFishFeed(void *params)
   while (1) {
     // Blink
     //digitalWrite(led_pin, HIGH);
-    ESP_LOGI(CONTROLS, "FISHFEED ON");
+    ESP_LOGI(CONTROLS, "FISHFEED ON: %ds", delays.fishfeed_delay);
     vTaskDelay( pdMS_TO_TICKS( delays.fishfeed_delay ) );
     //digitalWrite(led_pin, LOW);
     ESP_LOGI(CONTROLS, "FISHFEED OFF");
@@ -266,6 +294,7 @@ void vFishFeed(void *params)
 void vMainTask(void* params)
 {
   adc_calibration_init();
+  initConfigurationValues();
 
   // ---------------------SETUP ESP-NN---------------------------------//
   // Set up logging. Google style is to avoid globals or statics because of
@@ -314,72 +343,72 @@ void vMainTask(void* params)
   // ---------------------SETUP ESP-NN---------------------------------//
 
   uint8_t iterationCount = 0;
-    while(1)
+  while(1)
+  {
+    sensors.water_height = get_water_height();
+    sensors.temperature_value[iterationCount] = read_Temp_sensorValue();
+    sensors.pH_value[iterationCount] = read_PH_sensorValue();
+    sensors.dissolveOxygen_value[iterationCount] = read_DO_sensorValue( (uint32_t) sensors.temperature_value[iterationCount] ) / 1000;
+
+    //SEND VALUES TO HIVEMQ      
+    char payload[75];
+    memset(payload, '\0', 75 - 1);
+    sprintf(payload, "{\"TEMP\": %f, \"DO\": %f, \"PH\": %f, \"WH\": %d}",
+              sensors.temperature_value[iterationCount],
+              sensors.dissolveOxygen_value[iterationCount],
+              sensors.pH_value[iterationCount],
+              sensors.water_height
+              );
+    const uint8_t payloadLen = strlen(payload);
+    esp_mqtt_client_enqueue(client, "/aquaponics/lspu/sensors", payload, payloadLen, 2, 0, true);
+
+    ESP_LOGI(SENSORS, "Waterheight: %d", sensors.water_height);
+    ESP_LOGI(SENSORS, "Temperature[%d]: %f", iterationCount, sensors.temperature_value[iterationCount]);
+    ESP_LOGI(SENSORS, "Dissolved Oxygen[%d]: %f", iterationCount, sensors.dissolveOxygen_value[iterationCount]);
+    ESP_LOGI(SENSORS, "PH[%d]: %f", iterationCount, sensors.pH_value[iterationCount]);
+
+
+    if (iterationCount == 9)
     {
-      sensors.water_height = get_water_height();
-      sensors.temperature_value[iterationCount] = read_Temp_sensorValue();
-      sensors.pH_value[iterationCount] = read_PH_sensorValue();
-      sensors.dissolveOxygen_value[iterationCount] = read_DO_sensorValue( (uint32_t) sensors.temperature_value[iterationCount] ) / 1000;
+      // Do the inference here
+      float data[10][3];
 
-      //SEND VALUES TO HIVEMQ      
-      char payload[75];
-      memset(payload, '\0', 75 - 1);
-      sprintf(payload, "{\"TEMP\": %f, \"DO\": %f, \"PH\": %f, \"WH\": %d}",
-                sensors.temperature_value[iterationCount],
-                sensors.dissolveOxygen_value[iterationCount],
-                sensors.pH_value[iterationCount],
-                sensors.water_height
-                );
-      const uint8_t payloadLen = strlen(payload);
-      esp_mqtt_client_enqueue(client, "/aquaponics/lspu/sensors", payload, payloadLen, 2, 0, true);
-
-      ESP_LOGI(SENSORS, "Waterheight: %d", sensors.water_height);
-      ESP_LOGI(SENSORS, "Temperature[%d]: %f", iterationCount, sensors.temperature_value[iterationCount]);
-      ESP_LOGI(SENSORS, "Dissolved Oxygen[%d]: %f", iterationCount, sensors.dissolveOxygen_value[iterationCount]);
-      ESP_LOGI(SENSORS, "PH[%d]: %f", iterationCount, sensors.pH_value[iterationCount]);
-
-
-      if (iterationCount == 9)
+      for (int i = 0; i < 10; i++)
       {
-        // Do the inference here
-        float data[10][3];
-
-        for (int i = 0; i < 10; i++)
-        {
-          data[i][0] = sensors.temperature_value[i];
-          data[i][1] = sensors.dissolveOxygen_value[i];
-          data[i][2] = sensors.pH_value[i];
-        }
-
-        //Do the inference by doing a standard scaler and outputing the values to data
-        ScalerValues scaler;
-        getScalerValues( data, scaler );
-        standardScaler( data, scaler );
-        runInference( data );
-        inverseStandardScaler( data, scaler );
-
-        // SEND PREDICTIONS TO HIVEMQ
-        char predictionPayload[400];
-        memset(predictionPayload, '\0', 400 - 1);
-        sprintf(predictionPayload, "{\"temperature\": [ %f, %f, %f, %f, %f, %f, %f, %f, %f, %f], \"DOLevel\": [ %f, %f, %f, %f, %f, %f, %f, %f, %f, %f], \"pHLevel\": [ %f, %f, %f, %f, %f, %f, %f, %f, %f, %f]}",
-                data[0][0], data[1][0], data[2][0], data[3][0], data[4][0], data[5][0], data[6][0], data[7][0], data[8][0], data[9][0],
-                data[0][1], data[1][1], data[2][1], data[3][1], data[4][1], data[5][1], data[6][1], data[7][1], data[8][1], data[9][1],
-                data[0][2], data[1][2], data[2][2], data[3][2], data[4][2], data[5][2], data[6][2], data[7][2], data[8][2], data[9][2]
-                );
-        const uint8_t predictionPayloadLen = strlen(&(predictionPayload[250]));
-        esp_mqtt_client_enqueue(client, "/aquaponics/lspu/predictions", predictionPayload, 250 + predictionPayloadLen, 2, 0, true);
+        data[i][0] = sensors.temperature_value[i];
+        data[i][1] = sensors.dissolveOxygen_value[i];
+        data[i][2] = sensors.pH_value[i];
       }
 
-      delays.heater_delay = 5000;
-      delays.aerator_delay = 2000;
-      delays.watervalve_delay = 1000;
-      vTaskDelay( pdMS_TO_TICKS(1000) );
-      
-      iterationCount++;
+      //Do the inference by doing a standard scaler and outputing the values to data
+      ScalerValues scaler;
+      getScalerValues( data, scaler );
+      standardScaler( data, scaler );
+      runInference( data );
+      inverseStandardScaler( data, scaler );
 
-      if (iterationCount > 9)
-      {
-        iterationCount = 0;
-      }
+      getMedianValues(data, forecast);
+      setDelayValues(&configValues, &delays, &forecast);
+
+      // SEND PREDICTIONS TO HIVEMQ
+      char predictionPayload[400];
+      memset(predictionPayload, '\0', 400 - 1);
+      sprintf(predictionPayload, "{\"temperature\": [ %f, %f, %f, %f, %f, %f, %f, %f, %f, %f], \"DOLevel\": [ %f, %f, %f, %f, %f, %f, %f, %f, %f, %f], \"pHLevel\": [ %f, %f, %f, %f, %f, %f, %f, %f, %f, %f]}",
+              data[0][0], data[1][0], data[2][0], data[3][0], data[4][0], data[5][0], data[6][0], data[7][0], data[8][0], data[9][0],
+              data[0][1], data[1][1], data[2][1], data[3][1], data[4][1], data[5][1], data[6][1], data[7][1], data[8][1], data[9][1],
+              data[0][2], data[1][2], data[2][2], data[3][2], data[4][2], data[5][2], data[6][2], data[7][2], data[8][2], data[9][2]
+              );
+      const uint8_t predictionPayloadLen = strlen(&(predictionPayload[250]));
+      esp_mqtt_client_enqueue(client, "/aquaponics/lspu/predictions", predictionPayload, 250 + predictionPayloadLen, 2, 0, true);
     }
+
+    vTaskDelay( pdMS_TO_TICKS(1000) );
+    
+    iterationCount++;
+
+    if (iterationCount > 9)
+    {
+      iterationCount = 0;
+    }
+  }
 }

@@ -10,9 +10,9 @@ extern "C" {
 
 extern void RTC_init(void);
 
-void ds1302_sync_time_with_ntp(struct tm *time);
+extern void ds1302_sync_time_with_ntp(struct tm *time);
 
-void get_time_from_RTC(struct tm *time);
+extern void get_time_from_RTC(struct tm *time);
 
 #ifdef __cplusplus
 }

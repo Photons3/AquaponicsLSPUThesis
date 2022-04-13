@@ -3,9 +3,11 @@
 
 #ifdef __cplusplus
 extern "C" {
+#include <cstdio>
+#else
+#include <stdio.h>
 #endif
 
-#include <cstdio>
 
 struct DelayValues
 {
@@ -44,15 +46,14 @@ struct ScalerValues
 struct ConfigurationValues
 {
     //"TempLow":"18","TempHigh":"25","PhLow":"6","PhHigh":"7","DOLow":"4","DOHigh":"5","FishFreq":"2" FORMAT
-    float tempLow = 17.0f;
-    float tempHigh = 33.0f;
-    float phLow = 5.5f;
-    float phHigh = 8.0f;
-    float doLow = 10.0f;
-    float doHigh = 40.0f;
-    uint8_t fishFreq = 3;
+    float tempLow;
+    float tempHigh;
+    float phLow;
+    float phHigh;
+    float doLow;
+    float doHigh;
+    uint8_t fishFreq;
 };
-
 
 #ifdef __cplusplus
 }
