@@ -11,7 +11,7 @@ extern float read_PH_sensorValue();
 
 extern float read_Temp_sensorValue();
 
-extern float read_DO_sensorValue(uint8_t temperature_c);
+extern float read_DO_sensorValue(uint32_t temperature_c);
 
 #ifdef __cplusplus
 }

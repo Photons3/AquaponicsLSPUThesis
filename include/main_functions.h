@@ -15,6 +15,8 @@ extern void vAerator(void *params);
 
 extern void vPeristalticPump(void *params);
 
+extern void vSubmersiblePump(void* params);
+
 #ifdef __cplusplus
 }
 #endif

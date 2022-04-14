@@ -318,7 +318,7 @@ void vAerator(void *params)
   }
 }
 
-void vSubmersiblePump()
+void vSubmersiblePump(void* params)
 {
   gpio_pad_select_gpio(SUBMERSIBLE_PUMP_PIN);
   gpio_set_direction (SUBMERSIBLE_PUMP_PIN,GPIO_MODE_OUTPUT);
