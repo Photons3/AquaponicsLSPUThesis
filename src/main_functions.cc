@@ -18,7 +18,15 @@
 #include "ConfigurationHelperCxx.h"
 #include "HiveMQBroker.h"
 #include "RTC1302.h"
+#include "ServoMotorC.h"
 #include "Ultrasonicsensor.h"
+
+#define AERATOR_PIN GPIO_NUM_3
+#define HEATER_PIN GPIO_NUM_21
+#define PERISTALTIC_PUMP_PIN GPIO_NUM_1
+#define SUBMERSIBLE_PUMP_PIN GPIO_NUM_22
+
+#define MAX_DELAY_MS (10 * 60 * 1000)
 
 static const char* CONTROLS = "CONTROLS";
 static const char* SENSORS = "SENSORS";
@@ -240,81 +248,129 @@ static void getMedianValues(float (&data)[10][3], ForecastedValue &forecast)
 
 void vHeater(void *params) 
 { 
-  gpio_pad_select_gpio(GPIO_NUM_21);
-  gpio_set_direction (GPIO_NUM_21,GPIO_MODE_OUTPUT);  
+  gpio_pad_select_gpio(HEATER_PIN);
+  gpio_set_direction (HEATER_PIN,GPIO_MODE_OUTPUT);
+  gpio_set_level(HEATER_PIN, 0);
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
   while (1) {
     uint32_t vDelay = delays.heater_delay;
-    gpio_set_level(GPIO_NUM_21, 1);
+    gpio_set_level(HEATER_PIN, 1);
     ESP_LOGI(CONTROLS, "HEATER ON: %ds", vDelay);
     vTaskDelay( pdMS_TO_TICKS(vDelay) );
 
-    gpio_set_level(GPIO_NUM_21, 0);
+    gpio_set_level(HEATER_PIN, 0);
     ESP_LOGI(CONTROLS, "HEATER OFF");
-    vTaskDelay( pdMS_TO_TICKS(10000 - vDelay));
+    vTaskDelay( pdMS_TO_TICKS(MAX_DELAY_MS - vDelay));
   }
 }
 
 void vPeristalticPump(void *params)
 {
+  gpio_pad_select_gpio(PERISTALTIC_PUMP_PIN);
+  gpio_set_direction (PERISTALTIC_PUMP_PIN,GPIO_MODE_OUTPUT);
+  gpio_set_level(PERISTALTIC_PUMP_PIN, 0);
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
+  uint8_t lastPumpTime = currentTime.tm_hour;
+  uint8_t pumpMinFreq = 20;
+  uint8_t nextAvailablePumpTime = lastPumpTime + pumpMinFreq;
   while (1) {
-    // Blink
+    if ( ((currentTime.tm_hour < lastPumpTime) && ((currentTime.tm_hour + 24) >= nextAvailablePumpTime)) || (currentTime.tm_hour >= nextAvailablePumpTime ))
+    {
+      gpio_set_level(PERISTALTIC_PUMP_PIN, 1);
+      ESP_LOGI(CONTROLS, "PERISTALTIC PUMP ON: %ds", delays.peristalticPump_delay);
+      vTaskDelay( pdMS_TO_TICKS(delays.peristalticPump_delay) );
 
-    ESP_LOGI(CONTROLS, "PERISTALTIC PUMP ON: %ds", delays.peristalticPump_delay);
-    vTaskDelay( pdMS_TO_TICKS(delays.peristalticPump_delay) );
+      gpio_set_level(PERISTALTIC_PUMP_PIN, 0);
+      ESP_LOGI(CONTROLS, "PERISTALTIC PUMP OFF");
+      vTaskDelay( pdMS_TO_TICKS((30 * 60 * 1000) - delays.peristalticPump_delay));
 
-    ESP_LOGI(CONTROLS, "PERISTALTIC PUMP OFF");
-    vTaskDelay( pdMS_TO_TICKS(10000 - delays.peristalticPump_delay));
+      lastPumpTime = currentTime.tm_hour;
+      nextAvailablePumpTime = currentTime.tm_hour + pumpMinFreq;
+    }
+
+    else
+    {
+      //Run Every 30 Minutes
+      vTaskDelay(pdMS_TO_TICKS(30 * 60 * 1000));
+    }
+
   }
 }
 
 void vAerator(void *params) 
 {
-  gpio_set_level(GPIO_NUM_3, 1);
+  gpio_pad_select_gpio(AERATOR_PIN);
+  gpio_set_direction (AERATOR_PIN,GPIO_MODE_OUTPUT);
+  gpio_set_level(AERATOR_PIN, 0);
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
   while (1) {
-    // Blink
     uint32_t vDelay = delays.aerator_delay;
-    gpio_set_level(GPIO_NUM_3, 1);
+    gpio_set_level(AERATOR_PIN, 1);
     ESP_LOGI(CONTROLS, "AERATOR ON: %ds", vDelay);
     vTaskDelay( pdMS_TO_TICKS( vDelay ) );
     
-    gpio_set_level(GPIO_NUM_3, 0);
+    gpio_set_level(AERATOR_PIN, 0);
     ESP_LOGI(CONTROLS, "AERATOR OFF");
-    vTaskDelay( pdMS_TO_TICKS(10000 - vDelay) );
+    vTaskDelay( pdMS_TO_TICKS(MAX_DELAY_MS - vDelay) );
+  }
+}
+
+void vSubmersiblePump()
+{
+  gpio_pad_select_gpio(SUBMERSIBLE_PUMP_PIN);
+  gpio_set_direction (SUBMERSIBLE_PUMP_PIN,GPIO_MODE_OUTPUT);
+  gpio_set_level(SUBMERSIBLE_PUMP_PIN, 0);
+  vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); //DELAY FOR 30 SECS
+
+  while(1)
+  {
+    uint32_t vDelay = delays.submersiblePump_delay;
+    gpio_set_level(SUBMERSIBLE_PUMP_PIN, 1);
+    ESP_LOGI(CONTROLS, "SUBMERSIBLE PUMP ON: %ds", vDelay);
+    vTaskDelay( pdMS_TO_TICKS( vDelay ) );
+    
+    gpio_set_level(SUBMERSIBLE_PUMP_PIN, 0);
+    ESP_LOGI(CONTROLS, "SUBMERSIBLE PUMP OFF");
+    vTaskDelay( pdMS_TO_TICKS(MAX_DELAY_MS - vDelay) );
   }
 }
 
 void vFishFeed(void *params) 
 {
-
+  servoMotorInit();
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   // Loop forever
-  int lastFeedTime = 0;
+  uint8_t lastFeedTime = currentTime.tm_hour;
   uint8_t fishFreq;
   uint8_t feedFreq;
-  int nextFeedTime;
+  uint8_t nextFeedTime;
+
+  fishFreq = configValues.fishFreq;
+  feedFreq = ceil(24/fishFreq);
+  nextFeedTime = lastFeedTime + feedFreq; // BUGGED PA ITO
   while (1) {
     fishFreq = configValues.fishFreq;
     feedFreq = ceil(24/fishFreq);
-    nextFeedTime = lastFeedTime + feedFreq;
     //Compensate for 24 hours
     if (((currentTime.tm_hour < lastFeedTime) && (currentTime.tm_hour + 24) >= nextFeedTime) || (currentTime.tm_hour >= nextFeedTime))
     {
       //Open the FishFeeder
+      fishFeederOn();
+      ESP_LOGI(CONTROLS, "FISHFEED ON: %ds", delays.fishfeed_delay);
+      vTaskDelay(delays.fishfeed_delay);
+
+      fishFeederOff();
+      ESP_LOGI(CONTROLS, "FISHFEED OFF");
+      vTaskDelay( pdMS_TO_TICKS((30 * 60 * 1000) - delays.fishfeed_delay));
+      
       lastFeedTime = currentTime.tm_hour;
+      nextFeedTime = lastFeedTime + feedFreq;
     }
-    // Blink
-    //digitalWrite(led_pin, HIGH);
-    ESP_LOGI(CONTROLS, "FISHFEED ON: %ds", delays.fishfeed_delay);
-    vTaskDelay( pdMS_TO_TICKS( delays.fishfeed_delay ) );
-    //digitalWrite(led_pin, LOW);
-    ESP_LOGI(CONTROLS, "FISHFEED OFF");
-    vTaskDelay( pdMS_TO_TICKS(10000 - delays.fishfeed_delay) );
+    // Run Every 30 Minutes
+    vTaskDelay(pdMS_TO_TICKS(30 * 60 * 10000));
   }
 }
 
@@ -322,6 +378,8 @@ void vMainTask(void* params)
 {
   adc_calibration_init();
   initConfigurationValues();
+  initDelayValues(&delays);
+  get_time_from_RTC(&currentTime);
 
   // ---------------------SETUP ESP-NN---------------------------------//
   // Set up logging. Google style is to avoid globals or statics because of

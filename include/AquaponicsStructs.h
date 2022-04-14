@@ -14,7 +14,7 @@ struct DelayValues
     uint32_t heater_delay;
     uint32_t aerator_delay;
     uint32_t peristalticPump_delay;
-    uint32_t watervalve_delay;
+    uint32_t submersiblePump_delay;
     uint32_t fishfeed_delay;
 };
 

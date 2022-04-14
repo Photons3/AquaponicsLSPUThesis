@@ -11,6 +11,8 @@ extern void initConfigurationValues();
 
 extern void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValue* forecast);
 
+extern void initDelayValues(DelayValues* delay);
+
 extern ConfigurationValues configValues;
 
 #ifdef __cplusplus

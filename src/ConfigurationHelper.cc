@@ -19,6 +19,16 @@ void initConfigurationValues()
     configValues.phLow = 5.5;
 }
 
+void initDelayValues(DelayValues* delay)
+{
+    delay->heater_delay = 0;
+    delay->peristalticPump_delay = 0;
+    delay->aerator_delay = 5 * 60 * 1000;
+
+    delay->fishfeed_delay = 10 * 1000;
+    delay->submersiblePump_delay = 5 * 60 * 1000;
+}
+
 void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValue* forecast)
 {   
     
