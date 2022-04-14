@@ -4,34 +4,71 @@
 #include "ConfigurationHelperCxx.h"
 #include <esp_log.h>
 
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "nvs_handle.hpp"
+#include "esp_system.h"
+
 static const char* TAG = "CONFIG";
 
 ConfigurationValues configValues;
 
-void initConfigurationValues()
+void initConfigurationValues(DelayValues* delay)
 {
-    //"TempLow":"18","TempHigh":"25","PhLow":"6","PhHigh":"7","DOLow":"4","DOHigh":"5","FishFreq":"2" FORMAT
-    configValues.tempHigh = 33;
-    configValues.tempLow = 17;
-    configValues.doHigh = 40;
-    configValues.doLow = 10;
-    configValues.phHigh = 8;
-    configValues.phLow = 5.5;
-}
 
-void initDelayValues(DelayValues* delay)
-{
+    // Open
+    ESP_LOGI(TAG, "Opening Non-Volatile Storage (NVS) handle... ");
+    esp_err_t result;
+    // Handle will automatically close when going out of scope or when it's reset.
+    std::shared_ptr<nvs::NVSHandle> handle = nvs::open_nvs_handle("storage", NVS_READWRITE, &result);
+    
+    // Read
+    ESP_LOGI(TAG, "Reading contents from NVS ... ");
+    // -------------------------- DEFAULT VALUES ----------------------------------- //
+    int32_t tempLow = (int32_t) 17;                   
+    int32_t tempHigh = (int32_t) 33;
+    int32_t doLow = (int32_t) 10;
+    int32_t doHigh = (int32_t) 40;
+    int32_t phLow = (int32_t) 5;
+    int32_t phHigh = (int32_t) 8;
+    uint8_t fishFreq = (uint8_t) 3;
+
+    handle->get_item("tempLow", tempLow);
+    handle->get_item("tempHigh", tempHigh);
+    handle->get_item("doLow", doLow);
+    handle->get_item("doHigh", doHigh);
+    handle->get_item("phLow", phLow);
+    handle->get_item("phHigh", phHigh);
+    handle->get_item("fishFreq", fishFreq);
+
+    ESP_LOGI(TAG, "Config Values\n");
+    ESP_LOGI(TAG, "TEMP: %d - %d \n", tempLow, tempHigh);
+    ESP_LOGI(TAG, "DO: %d - %d \n", doLow, doHigh);
+    ESP_LOGI(TAG, "PH: %d - %d \n", phLow, phHigh);
+
+    configValues.tempLow = (float) tempLow;
+    configValues.tempHigh = (float) tempHigh;
+    configValues.doLow = (float) doLow;
+    configValues.doHigh = (float) doHigh;
+    configValues.phLow = (float) phLow;
+    configValues.phHigh = (float) phHigh;
+    configValues.fishFreq = (uint8_t) fishFreq;
+
+    // START OF DELAY INITIALIZATION
+    uint32_t submersiblePumpDelay = 5 * 60 * 1000;
+
+    handle->get_item("submersiblePumpDelay", submersiblePumpDelay);
+
     delay->heater_delay = 0;
     delay->peristalticPump_delay = 0;
     delay->aerator_delay = 5 * 60 * 1000;
 
     delay->fishfeed_delay = 10 * 1000;
-    delay->submersiblePump_delay = 5 * 60 * 1000;
+    delay->submersiblePump_delay = submersiblePumpDelay;
 }
 
 void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValue* forecast)
 {   
-    
     {
     // Temperature
     float x_1, x_2, x_3, y_1, y_2, y_3, x;
@@ -113,4 +150,16 @@ void changeConfiguration(char* message)
      (configValues.doHigh),
      (configValues.fishFreq)
     );
+
+    esp_err_t result;
+    // Handle will automatically close when going out of scope or when it's reset.
+    std::shared_ptr<nvs::NVSHandle> handle = nvs::open_nvs_handle("storage", NVS_READWRITE, &result);
+
+    handle->set_item("tempLow", (int32_t) configValues.tempLow);
+    handle->set_item("tempHigh", (int32_t) configValues.tempHigh);
+    handle->set_item("doLow", (int32_t) configValues.doLow);
+    handle->set_item("doHigh", (int32_t) configValues.doHigh);
+    handle->set_item("phLow", (int32_t) configValues.phLow);
+    handle->set_item("phHigh", (int32_t) configValues.phHigh);
+    handle->set_item("fishFreq", (uint8_t) configValues.fishFreq);
 }

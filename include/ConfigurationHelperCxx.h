@@ -7,11 +7,9 @@ extern "C" {
 
 #include "AquaponicsStructs.h"
 
-extern void initConfigurationValues();
+extern void initConfigurationValues(DelayValues* delay);
 
 extern void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValue* forecast);
-
-extern void initDelayValues(DelayValues* delay);
 
 extern ConfigurationValues configValues;
 

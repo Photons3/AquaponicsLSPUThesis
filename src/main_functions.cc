@@ -4,9 +4,13 @@
 #include <bits/stdc++.h>
 
 #include <esp_log.h>
+#include "esp_system.h"
 #include "driver/gpio.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "nvs_handle.hpp"
 
 #include "model.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
@@ -271,10 +275,19 @@ void vPeristalticPump(void *params)
   gpio_set_direction (PERISTALTIC_PUMP_PIN,GPIO_MODE_OUTPUT);
   gpio_set_level(PERISTALTIC_PUMP_PIN, 0);
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
+
   // Loop forever
   uint8_t lastPumpTime = currentTime.tm_hour;
   uint8_t pumpMinFreq = 20;
   uint8_t nextAvailablePumpTime = lastPumpTime + pumpMinFreq;
+
+  // NVS STORAGE
+  esp_err_t result;
+  // Handle will automatically close when going out of scope or when it's reset.
+  std::shared_ptr<nvs::NVSHandle> handle = nvs::open_nvs_handle("storage", NVS_READWRITE, &result);
+
+  handle->get_item("lastPumpTime", lastPumpTime);
+
   while (1) {
     if ( ((currentTime.tm_hour < lastPumpTime) && ((currentTime.tm_hour + 24) >= nextAvailablePumpTime)) || (currentTime.tm_hour >= nextAvailablePumpTime ))
     {
@@ -288,6 +301,11 @@ void vPeristalticPump(void *params)
 
       lastPumpTime = currentTime.tm_hour;
       nextAvailablePumpTime = currentTime.tm_hour + pumpMinFreq;
+
+      //SAVE TO NVS
+      ESP_LOGI(CONTROLS, "Committing updates in NVS LASTPUMP TIME: %d:00", lastPumpTime);
+      handle->set_item("lastPumpTime", lastPumpTime);
+      handle->commit();
     }
 
     else
@@ -342,15 +360,24 @@ void vFishFeed(void *params)
 {
   servoMotorInit();
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
+
   // Loop forever
   uint8_t lastFeedTime = currentTime.tm_hour;
   uint8_t fishFreq;
   uint8_t feedFreq;
   uint8_t nextFeedTime;
+  
+  // NVS STORAGE
+  esp_err_t result;
+  // Handle will automatically close when going out of scope or when it's reset.
+  std::shared_ptr<nvs::NVSHandle> handle = nvs::open_nvs_handle("storage", NVS_READWRITE, &result);
+
+  handle->get_item("lastFeedTime", lastFeedTime);
 
   fishFreq = configValues.fishFreq;
   feedFreq = ceil(24/fishFreq);
-  nextFeedTime = lastFeedTime + feedFreq; // BUGGED PA ITO
+  nextFeedTime = lastFeedTime + feedFreq;
+
   while (1) {
     fishFreq = configValues.fishFreq;
     feedFreq = ceil(24/fishFreq);
@@ -368,6 +395,11 @@ void vFishFeed(void *params)
       
       lastFeedTime = currentTime.tm_hour;
       nextFeedTime = lastFeedTime + feedFreq;
+
+      //SAVE TO NVS
+      ESP_LOGI(CONTROLS, "Committing updates in NVS LASTFEED TIME: %d:00", lastFeedTime);
+      handle->set_item("lastFeedTime", lastFeedTime);
+      handle->commit();
     }
     // Run Every 30 Minutes
     vTaskDelay(pdMS_TO_TICKS(30 * 60 * 10000));
@@ -377,8 +409,7 @@ void vFishFeed(void *params)
 void vMainTask(void* params)
 {
   adc_calibration_init();
-  initConfigurationValues();
-  initDelayValues(&delays);
+  initConfigurationValues(&delays);
   get_time_from_RTC(&currentTime);
 
   // ---------------------SETUP ESP-NN---------------------------------//
@@ -488,7 +519,7 @@ void vMainTask(void* params)
       esp_mqtt_client_enqueue(client, "/aquaponics/lspu/predictions", predictionPayload, 250 + predictionPayloadLen, 0, 0, true);
     }
 
-    vTaskDelay( pdMS_TO_TICKS(1000) );
+    vTaskDelay( pdMS_TO_TICKS( 60 * 1000) );
     
     iterationCount++;
 

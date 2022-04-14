@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-extern void vMainTask(void* params);
+extern void vMainTask(void *params);
 
 extern void vHeater(void *params);
 
@@ -15,7 +15,7 @@ extern void vAerator(void *params);
 
 extern void vPeristalticPump(void *params);
 
-extern void vSubmersiblePump(void* params);
+extern void vSubmersiblePump(void *params);
 
 #ifdef __cplusplus
 }
