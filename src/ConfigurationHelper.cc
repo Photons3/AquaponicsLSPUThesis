@@ -13,6 +13,8 @@ static const char* TAG = "CONFIG";
 
 ConfigurationValues configValues;
 
+extern void delayValueHandler(uint32_t fishFeedDelay, uint32_t submersiblePumpDelay);
+
 void initConfigurationValues(DelayValues* delay)
 {
 
@@ -41,10 +43,11 @@ void initConfigurationValues(DelayValues* delay)
     handle->get_item("phHigh", phHigh);
     handle->get_item("fishFreq", fishFreq);
 
-    ESP_LOGI(TAG, "Config Values\n");
-    ESP_LOGI(TAG, "TEMP: %d - %d \n", tempLow, tempHigh);
-    ESP_LOGI(TAG, "DO: %d - %d \n", doLow, doHigh);
-    ESP_LOGI(TAG, "PH: %d - %d \n", phLow, phHigh);
+    ESP_LOGI(TAG, "Config Values");
+    ESP_LOGI(TAG, "TEMP: %d - %d", tempLow, tempHigh);
+    ESP_LOGI(TAG, "DO: %d - %d", doLow, doHigh);
+    ESP_LOGI(TAG, "PH: %d - %d", phLow, phHigh);
+    ESP_LOGI(TAG, "FEEDFREQUENCY: %d", fishFreq);
 
     configValues.tempLow = (float) tempLow;
     configValues.tempHigh = (float) tempHigh;
@@ -56,15 +59,23 @@ void initConfigurationValues(DelayValues* delay)
 
     // START OF DELAY INITIALIZATION
     uint32_t submersiblePumpDelay = 5 * 60 * 1000;
+    uint32_t fishfeedDelay = 10 * 1000;
 
     handle->get_item("submersiblePumpDelay", submersiblePumpDelay);
+    handle->get_item("fishfeedDelay", fishfeedDelay);
 
     delay->heater_delay = 0;
     delay->peristalticPump_delay = 0;
     delay->aerator_delay = 5 * 60 * 1000;
 
-    delay->fishfeed_delay = 10 * 1000;
+    delay->fishfeed_delay = fishfeedDelay;
     delay->submersiblePump_delay = submersiblePumpDelay;
+    ESP_LOGI(TAG, "Delay Values");
+    ESP_LOGI(TAG, "AeratorDelay: %d", delay->aerator_delay);
+    ESP_LOGI(TAG, "HeaterDelay: %d", delay->heater_delay);
+    ESP_LOGI(TAG, "PeristalticPumpDelay: %d", delay->peristalticPump_delay);
+    ESP_LOGI(TAG, "SubmersiblePumpDelay: %d", delay->submersiblePump_delay);
+    ESP_LOGI(TAG, "FishFeedDelay: %d", delay->fishfeed_delay);
 }
 
 void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValue* forecast)
@@ -130,26 +141,36 @@ void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValu
 
 void changeConfiguration(char* message)
 {
+    uint32_t submersiblePumpDelay = 5 * 60 * 1000;
+    uint32_t fishfeedDelay = 10 * 1000;
+
     //"TempLow":"18","TempHigh":"25","PhLow":"6","PhHigh":"7","DOLow":"4","DOHigh":"5","FishFreq":"2" FORMAT
-    sscanf(message, "\"TempLow\":\"%f\",\"TempHigh\":\"%f\",\"PhLow\":\"%f\",\"PhHigh\":\"%f\",\"DOLow\":\"%f\",\"DOHigh\":\"%f\",\"FishFreq\":\"%c\"",
+    sscanf(message, "\"TempLow\":\"%f\",\"TempHigh\":\"%f\",\"PhLow\":\"%f\",\"PhHigh\":\"%f\",\"DOLow\":\"%f\",\"DOHigh\":\"%f\",\"FishFreq\":\"%d\",\"PumpD\":\"%d\",\"FishD\":\"%d\"",
     &(configValues.tempLow),
     &(configValues.tempHigh),
     &(configValues.phLow),
     &(configValues.phHigh),
     &(configValues.doLow),
     &(configValues.doHigh),
-    &(configValues.fishFreq)
+    &(configValues.fishFreq),
+    &(submersiblePumpDelay),
+    &(fishfeedDelay)
     );
 
-    ESP_LOGI(TAG, "\"TempLow\":\"%f\",\"TempHigh\":\"%f\",\"PhLow\":\"%f\",\"PhHigh\":\"%f\",\"DOLow\":\"%f\",\"DOHigh\":\"%f\",\"FishFreq\":\"%c\" \n",
+    ESP_LOGI(TAG, "\"TempLow\":\"%f\",\"TempHigh\":\"%f\",\"PhLow\":\"%f\",\"PhHigh\":\"%f\",\"DOLow\":\"%f\",\"DOHigh\":\"%f\",\"FishFreq\":\"%d\",\"SubmersiblePumpDelay\":\"%d\",\"FishFeedDelay\":\"%d\"",
      (configValues.tempLow),
      (configValues.tempHigh),
      (configValues.phLow),
      (configValues.phHigh),
      (configValues.doLow),
      (configValues.doHigh),
-     (configValues.fishFreq)
+     (configValues.fishFreq),
+     (submersiblePumpDelay),
+     (fishfeedDelay)
     );
+
+    // SET THE DELAY VALUES
+    delayValueHandler(fishfeedDelay, submersiblePumpDelay);
 
     esp_err_t result;
     // Handle will automatically close when going out of scope or when it's reset.
@@ -162,4 +183,6 @@ void changeConfiguration(char* message)
     handle->set_item("phLow", (int32_t) configValues.phLow);
     handle->set_item("phHigh", (int32_t) configValues.phHigh);
     handle->set_item("fishFreq", (uint8_t) configValues.fishFreq);
+    handle->set_item("submersiblePumpDelay", (uint32_t) submersiblePumpDelay);
+    handle->set_item("fishfeedDelay", (uint32_t) fishfeedDelay);
 }

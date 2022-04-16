@@ -9,7 +9,7 @@
 #include <ds18x20.h>
 
 
-// Set up the temperature sensor pins and adress -------------
+// // Set up the temperature sensor pins and adress -------------
 #if defined(CONFIG_IDF_TARGET_ESP8266)
     static const gpio_num_t tempSensorPin = 4;
 #else

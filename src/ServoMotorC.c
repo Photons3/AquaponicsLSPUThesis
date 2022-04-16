@@ -6,7 +6,7 @@
 #define SERVO_MAX_PULSEWIDTH_US (2400) // Maximum pulse width in microsecond
 #define SERVO_MAX_DEGREE        (90)   // Maximum angle in degree upto which servo can rotate
 
-#define SERVO_PULSE_GPIO        GPIO_NUM_25   // GPIO connects to the PWM signal line
+#define SERVO_PULSE_GPIO        GPIO_NUM_27   // FISH FEEDER PIN
 
 static inline uint32_t convert_servo_angle_to_duty_us(int angle)
 {

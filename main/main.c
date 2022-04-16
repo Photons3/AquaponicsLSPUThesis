@@ -24,10 +24,10 @@ void app_main(void)
     obtain_time();
     mqtt_app_start();
     
-    xTaskCreatePinnedToCore(vMainTask, "vMainTask", configMINIMAL_STACK_SIZE * 5, NULL, 12 | portPRIVILEGE_BIT, NULL, tskNO_AFFINITY);
-    xTaskCreatePinnedToCore(vHeater, "vTemperature", configMINIMAL_STACK_SIZE * 5, NULL, 9 | portPRIVILEGE_BIT, NULL,tskNO_AFFINITY);
-    xTaskCreatePinnedToCore(vAerator, "vAerator", configMINIMAL_STACK_SIZE * 5, NULL,  8 | portPRIVILEGE_BIT, NULL, tskNO_AFFINITY);
-    xTaskCreatePinnedToCore(vPeristalticPump, "vPeristalticPump", configMINIMAL_STACK_SIZE * 8, NULL, 11 | portPRIVILEGE_BIT, NULL, tskNO_AFFINITY);
-    xTaskCreatePinnedToCore(vFishFeed, "vFishFeed", configMINIMAL_STACK_SIZE * 5, NULL, 10 | portPRIVILEGE_BIT, NULL,tskNO_AFFINITY);
-    xTaskCreatePinnedToCore(vSubmersiblePump, "vSubmersiblePump", configMINIMAL_STACK_SIZE * 5, NULL, 7 | portPRIVILEGE_BIT, NULL,tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(vMainTask, "vMainTask", configMINIMAL_STACK_SIZE * 5, NULL, 12 , NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(vPeristalticPump, "vPeristalticPump", configMINIMAL_STACK_SIZE * 8, NULL, 11 , NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(vFishFeed, "vFishFeed", configMINIMAL_STACK_SIZE * 5, NULL, 10 , NULL,tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(vHeater, "vHeater", configMINIMAL_STACK_SIZE * 5, NULL, 9 , NULL,tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(vAerator, "vAerator", configMINIMAL_STACK_SIZE * 5, NULL,  8 , NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(vSubmersiblePump, "vSubmersiblePump", configMINIMAL_STACK_SIZE * 5, NULL, 7 , NULL,tskNO_AFFINITY);
 }

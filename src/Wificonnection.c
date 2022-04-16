@@ -50,7 +50,7 @@ static void initialize_sntp(void)
 {
     ESP_LOGI(TAG, "Initializing SNTP");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "time.google.com");
+    sntp_setservername(0, "ntp.pagasa.dost.gov.ph");
     sntp_init();
 }
 
@@ -66,8 +66,9 @@ void obtain_time(void)
         time(&now);
         localtime_r(&now, &timeinfo);
     }
-    setenv("TZ", "EST+12", 1);
+    setenv("TZ", "GMT+08", 1);
     tzset();
+    localtime_r(&now, &timeinfo);
     ds1302_sync_time_with_ntp(&timeinfo);
     ESP_LOGI(TAG, "Time is set...");
 }

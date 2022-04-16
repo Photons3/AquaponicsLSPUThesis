@@ -41,7 +41,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "Delegate Message Payload: %s", configMessage);
         if (strcmp(event->topic, "/aquaponics/lspu/configuration") == 0)
         {
-            ESP_LOGI(TAG, "Message Configurating \n");
+            ESP_LOGI(TAG, "Message Configurating...");
             changeConfiguration(configMessage);
             //"TempLow":"18","TempHigh":"25","PhLow":"6","PhHigh":"7","DOLow":"4","DOHigh":"5","FishFreq":"2" FORMAT
             // sscanf(configMessage, "\"TempLow\":\"%f\",\"TempHigh\":\"%f\",\"PhLow\":\"%f\",\"PhHigh\":\"%f\",\"DOLow\":\"%f\",\"DOHigh\":\"%f\",\"FishFreq\":\"%d\"",

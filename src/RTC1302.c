@@ -32,6 +32,7 @@ void ds1302_sync_time_with_ntp(struct tm *time)
 
     ESP_ERROR_CHECK(ds1302_set_time(&RTCdev, time));
     ESP_ERROR_CHECK(ds1302_start(&RTCdev, true));
+    ESP_ERROR_CHECK(ds1302_set_write_protect(&RTCdev, true));
 }
 
 void get_time_from_RTC(struct tm *time)

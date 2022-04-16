@@ -52,7 +52,7 @@ struct ConfigurationValues
     float phHigh;
     float doLow;
     float doHigh;
-    uint8_t fishFreq;
+    uint32_t fishFreq;
 };
 
 #ifdef __cplusplus

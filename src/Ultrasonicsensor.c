@@ -7,8 +7,8 @@
 #define TRIGGER_GPIO 4
 #define ECHO_GPIO 5
 #else
-#define TRIGGER_GPIO 9
-#define ECHO_GPIO 10
+#define TRIGGER_GPIO 25
+#define ECHO_GPIO 26
 #endif
 
 void ultrasonic_test(void *pvParameters)
