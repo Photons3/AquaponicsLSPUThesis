@@ -120,20 +120,24 @@ void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValu
     
     {
     // PH
+    float flowrate = (30.00f/70000.00f); //ml/ms
     float x_1, x_2, x_3, y_1, y_2, y_3, x;
     x = forecast->PH;
     x_1 = val->phLow;
     x_2 = val->phLow + (val->phHigh - val->phLow)*(1/8);
     x_3 = val->phLow + (val->phHigh - val->phHigh)*(1/4);
 
-    float highDelay = 20 * 1000;
+    float highDelay = 30; // 30 ML max around 70 seconds
 
     y_1 = highDelay;
     y_2 = highDelay / 2;
     y_3 = 0;
 
     uint32_t y = (uint32_t)(y_1*((x-x_2)*(x-x_3))/((x_1-x_2)*(x_1-x_3))+y_2*((x-x_1)*(x-x_3))/((x_2-x_1)*(x_2-x_3))+y_3*((x-x_1)*(x-x_2))/((x_3-x_1)*(x_3-x_2)));
-    delay->peristalticPump_delay = y;
+    float dosage = y;
+
+    uint32_t timeOpen = (uint32_t)(dosage / flowrate);
+    delay->peristalticPump_delay = timeOpen;
     ESP_LOGI(TAG, "Peristaltic Pump Delay: %ds", delay->peristalticPump_delay);
     }
     

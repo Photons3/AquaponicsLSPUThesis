@@ -443,6 +443,10 @@ void vFishFeed(void *params)
 
       fishFeederOff();
       ESP_LOGI(CONTROLS, "FISHFEED OFF");
+
+      //SEND VALUES TO HIVEMQ
+      char payload[9] = "FeederOn";
+      esp_mqtt_client_enqueue(client, "/aquaponics/lspu/feederstatus", payload, 9, 0, 0, true);
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS((30 * 60 * 1000) - vDelay) );
     }
     // Run Every 30 Minutes
