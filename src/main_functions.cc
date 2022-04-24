@@ -27,7 +27,7 @@
 
 #define AERATOR_PIN GPIO_NUM_19
 #define HEATER_PIN GPIO_NUM_21
-#define PERISTALTIC_PUMP_PIN GPIO_NUM_23
+#define PERISTALTIC_PUMP_PIN GPIO_NUM_13
 #define SUBMERSIBLE_PUMP_PIN GPIO_NUM_22
 
 #define MAX_DELAY_MS (10 * 60 * 1000)
@@ -261,7 +261,7 @@ void vHeater(void *params)
 { 
   gpio_pad_select_gpio(HEATER_PIN);
   gpio_set_direction (HEATER_PIN,GPIO_MODE_OUTPUT);
-  gpio_set_level(HEATER_PIN, 0);
+  gpio_set_level(HEATER_PIN, 1);
   vTaskDelay( pdMS_TO_TICKS(34 * 1000) ); // DELAY FOR 30 SECS
   ESP_LOGI(CONTROLS, "HEATER TASK START");
   // Loop forever
@@ -271,11 +271,11 @@ void vHeater(void *params)
     uint32_t vDelay = delays.heater_delay;
     if (vDelay > 0 && vDelay < MAX_DELAY_MS)
     {
-      gpio_set_level(HEATER_PIN, 1);
+      gpio_set_level(HEATER_PIN, 0);
       ESP_LOGI(CONTROLS, "HEATER ON: %d ms", vDelay);
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(vDelay) );
 
-      gpio_set_level(HEATER_PIN, 0);
+      gpio_set_level(HEATER_PIN, 1);
       ESP_LOGI(CONTROLS, "HEATER OFF");
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(MAX_DELAY_MS - vDelay) );
     }
@@ -290,7 +290,7 @@ void vPeristalticPump(void *params)
 {
   gpio_pad_select_gpio(PERISTALTIC_PUMP_PIN);
   gpio_set_direction (PERISTALTIC_PUMP_PIN,GPIO_MODE_OUTPUT);
-  gpio_set_level(PERISTALTIC_PUMP_PIN, 0);
+  gpio_set_level(PERISTALTIC_PUMP_PIN, 1);
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   ESP_LOGI(CONTROLS, "PERISTALTIC PUMP TASK START");
 
@@ -315,7 +315,7 @@ void vPeristalticPump(void *params)
       uint32_t vDelay = delays.peristalticPump_delay;
       if (vDelay > 0 && vDelay < MAX_DELAY_MS)
       {
-        gpio_set_level(PERISTALTIC_PUMP_PIN, 1);
+        gpio_set_level(PERISTALTIC_PUMP_PIN, 0);
         ESP_LOGI(CONTROLS, "PERISTALTIC PUMP ON: %d ms", vDelay);
         vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(vDelay) );
 
@@ -327,7 +327,7 @@ void vPeristalticPump(void *params)
         handle->set_item("lastPumpTime", lastPumpTime);
         handle->commit();
 
-        gpio_set_level(PERISTALTIC_PUMP_PIN, 0);
+        gpio_set_level(PERISTALTIC_PUMP_PIN, 1);
         ESP_LOGI(CONTROLS, "PERISTALTIC PUMP OFF");
         vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS((30 * 60 * 1000) - vDelay) );
       }
@@ -341,7 +341,7 @@ void vAerator(void *params)
 {
   gpio_pad_select_gpio(AERATOR_PIN);
   gpio_set_direction (AERATOR_PIN,GPIO_MODE_OUTPUT);
-  gpio_set_level(AERATOR_PIN, 0);
+  gpio_set_level(AERATOR_PIN, 1);
   vTaskDelay( pdMS_TO_TICKS(36 * 1000) ); // DELAY FOR 30 SECS
   ESP_LOGI(CONTROLS, "AERATOR TASK START");
   // Loop forever
@@ -351,11 +351,11 @@ void vAerator(void *params)
     uint32_t vDelay = delays.aerator_delay;
     if (vDelay > 0 && vDelay < MAX_DELAY_MS)
     {
-      gpio_set_level(AERATOR_PIN, 1);
+      gpio_set_level(AERATOR_PIN, 0);
       ESP_LOGI(CONTROLS, "AERATOR ON: %d ms", vDelay);
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(vDelay) );
       
-      gpio_set_level(AERATOR_PIN, 0);
+      gpio_set_level(AERATOR_PIN, 1);
       ESP_LOGI(CONTROLS, "AERATOR OFF");
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(MAX_DELAY_MS - vDelay) );
     }
@@ -370,7 +370,7 @@ void vSubmersiblePump(void* params)
 {
   gpio_pad_select_gpio(SUBMERSIBLE_PUMP_PIN);
   gpio_set_direction (SUBMERSIBLE_PUMP_PIN,GPIO_MODE_OUTPUT);
-  gpio_set_level(SUBMERSIBLE_PUMP_PIN, 0);
+  gpio_set_level(SUBMERSIBLE_PUMP_PIN, 1);
   vTaskDelay( pdMS_TO_TICKS(38 * 1000) ); //DELAY FOR 30 SECS
   ESP_LOGI(CONTROLS, "SUBMERSIBLE PUMP TASK START");
   //LOOP FOREVER
@@ -381,11 +381,11 @@ void vSubmersiblePump(void* params)
     uint32_t vDelay = delays.submersiblePump_delay;
     if (vDelay > 0 && vDelay < MAX_DELAY_MS)
     {
-      gpio_set_level(SUBMERSIBLE_PUMP_PIN, 1);
+      gpio_set_level(SUBMERSIBLE_PUMP_PIN, 0);
       ESP_LOGI(CONTROLS, "SUBMERSIBLE PUMP ON: %d ms", vDelay);
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(vDelay) );
       
-      gpio_set_level(SUBMERSIBLE_PUMP_PIN, 0);
+      gpio_set_level(SUBMERSIBLE_PUMP_PIN, 1);
       ESP_LOGI(CONTROLS, "SUBMERSIBLE PUMP OFF");
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(MAX_DELAY_MS - vDelay) );
     }
