@@ -84,11 +84,11 @@ void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValu
     // Temperature
     float x_1, x_2, x_3, y_1, y_2, y_3, x;
     x = forecast->temperature;
-    x_1 = val->tempLow - (val->tempLow)/4.5;
+    x_1 = val->tempLow - (val->tempHigh - val->tempLow)/2;
     x_2 = val->tempLow + (val->tempHigh - val->tempLow)/5;
     x_3 = val->tempLow + (val->tempHigh - val->tempLow)/2;
 
-    float highDelay = 20 * 1000;
+    float highDelay = 30 * 1000;
 
     y_1 = highDelay;
     y_2 = highDelay / 2;
@@ -103,11 +103,11 @@ void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValu
     // DO
     float x_1, x_2, x_3, y_1, y_2, y_3, x;
     x = forecast->DO;
-    x_1 = val->doLow - (val->doLow)/3;
-    x_2 = val->doLow + (val->doHigh - val->doHigh)/2.5;
+    x_1 = val->doLow - (val->doHigh - val->doLow)/3;
+    x_2 = val->doLow + (val->doHigh - val->doLow)/2.5;
     x_3 = val->doLow + (val->doHigh - val->doLow)/1.33;
 
-    float highDelay = 540 * 1000;
+    float highDelay = 570 * 1000;
 
     y_1 = highDelay;
     y_2 = highDelay / 2;
@@ -123,11 +123,11 @@ void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValu
     float flowrate = (30.00f/70.00f); //ml/ms
     float x_1, x_2, x_3, y_1, y_2, y_3, x;
     x = forecast->PH;
-    x_1 = val->phLow - (val->phLow)/8;
+    x_1 = val->phLow - (val->phHigh - val->phLow)/8;
     x_2 = val->phLow + (val->phHigh - val->phLow)/8;
     x_3 = val->phLow + (val->phHigh - val->phLow)/4;
 
-    float highDelay = 30; // 30 ML max around 70 seconds
+    float highDelay = 120; // 120 ML max around 280 seconds
 
     y_1 = highDelay;
     y_2 = highDelay / 2;
