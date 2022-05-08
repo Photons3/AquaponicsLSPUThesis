@@ -1,7 +1,7 @@
 #include <Ultrasonicsensor.h>
 
-#define MAX_DISTANCE_CM 100 // 1m max
-#define ULTRA_SONIC_SENSOR_HEIGHT 70 // 70 cm
+#define MAX_DISTANCE_CM 60 // 1m max
+#define ULTRA_SONIC_SENSOR_HEIGHT 60 // 70 cm
 
 #if defined(CONFIG_IDF_TARGET_ESP8266)
 #define TRIGGER_GPIO 4
@@ -66,12 +66,12 @@ uint32_t get_water_height()
 
     if ( res != ESP_OK )
     {
-        return 60;
+        return 30;
     }
 
     if ( height == 0 || height > ULTRA_SONIC_SENSOR_HEIGHT )
     {
-        return 60;
+        return 30;
     }
         
     return height;

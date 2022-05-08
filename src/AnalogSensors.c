@@ -31,7 +31,7 @@ static const ds18x20_addr_t SENSOR_ADDR = 0x0701215cb8cf4128;
 #endif
 
 // Define VoltageDividerMultiplier Value
-static const float VoltageDividerMultipler = 1.00F; // 120K+220K/220K
+static const float VoltageDividerMultipler = 1.00f; // 120K+220K/220K
 
 //ADC Channels
 #define DOSensorPin          ADC1_CHANNEL_6      /*!< ADC1 channel 6 is GPIO34 */
