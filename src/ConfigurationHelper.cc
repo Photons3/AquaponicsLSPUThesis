@@ -94,18 +94,18 @@ void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValu
     y_2 = highDelay / 2;
     y_3 = 0;
 
-    uint32_t y = (uint32_t)(y_1*((x-x_2)*(x-x_3))/((x_1-x_2)*(x_1-x_3))+y_2*((x-x_1)*(x-x_3))/((x_2-x_1)*(x_2-x_3))+y_3*((x-x_1)*(x-x_2))/((x_3-x_1)*(x_3-x_2)));
+    uint32_t y = (y_1*((x-x_2)*(x-x_3))/((x_1-x_2)*(x_1-x_3))+y_2*((x-x_1)*(x-x_3))/((x_2-x_1)*(x_2-x_3))+y_3*((x-x_1)*(x-x_2))/((x_3-x_1)*(x_3-x_2)));
     delay->heater_delay = y;
-    ESP_LOGI(TAG, "Heater Delay: %d s", delay->heater_delay);
+    ESP_LOGI(TAG, "Heater Delay: %d ms", delay->heater_delay);
     }
 
     {
     // DO
     float x_1, x_2, x_3, y_1, y_2, y_3, x;
     x = forecast->DO;
-    x_1 = val->doLow;
-    x_2 = val->doLow + (val->doHigh - val->doHigh)*(2/5);
-    x_3 = val->doLow + (val->doHigh - val->doLow)*(3/4);
+    x_1 = val->doLow - (val->doLow)/3;
+    x_2 = val->doLow + (val->doHigh - val->doHigh)/2.5;
+    x_3 = val->doLow + (val->doHigh - val->doLow)/1.33;
 
     float highDelay = 540 * 1000;
 
@@ -113,19 +113,19 @@ void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValu
     y_2 = highDelay / 2;
     y_3 = 0;
 
-    uint32_t y = (uint32_t)(y_1*((x-x_2)*(x-x_3))/((x_1-x_2)*(x_1-x_3))+y_2*((x-x_1)*(x-x_3))/((x_2-x_1)*(x_2-x_3))+y_3*((x-x_1)*(x-x_2))/((x_3-x_1)*(x_3-x_2)));
+    uint32_t y = (y_1*((x-x_2)*(x-x_3))/((x_1-x_2)*(x_1-x_3))+y_2*((x-x_1)*(x-x_3))/((x_2-x_1)*(x_2-x_3))+y_3*((x-x_1)*(x-x_2))/((x_3-x_1)*(x_3-x_2)));
     delay->aerator_delay = y;
-    ESP_LOGI(TAG, "Aerator Delay: %ds", delay->aerator_delay);
+    ESP_LOGI(TAG, "Aerator Delay: %d ms", delay->aerator_delay);
     }
     
     {
     // PH
-    float flowrate = (30.00f/70000.00f); //ml/ms
+    float flowrate = (30.00f/70.00f); //ml/ms
     float x_1, x_2, x_3, y_1, y_2, y_3, x;
     x = forecast->PH;
-    x_1 = val->phLow;
-    x_2 = val->phLow + (val->phHigh - val->phLow)*(1/8);
-    x_3 = val->phLow + (val->phHigh - val->phHigh)*(1/4);
+    x_1 = val->phLow - (val->phLow)/8;
+    x_2 = val->phLow + (val->phHigh - val->phLow)/8;
+    x_3 = val->phLow + (val->phHigh - val->phLow)/4;
 
     float highDelay = 30; // 30 ML max around 70 seconds
 
@@ -133,12 +133,12 @@ void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValu
     y_2 = highDelay / 2;
     y_3 = 0;
 
-    uint32_t y = (uint32_t)(y_1*((x-x_2)*(x-x_3))/((x_1-x_2)*(x_1-x_3))+y_2*((x-x_1)*(x-x_3))/((x_2-x_1)*(x_2-x_3))+y_3*((x-x_1)*(x-x_2))/((x_3-x_1)*(x_3-x_2)));
+    uint32_t y = (y_1*((x-x_2)*(x-x_3))/((x_1-x_2)*(x_1-x_3))+y_2*((x-x_1)*(x-x_3))/((x_2-x_1)*(x_2-x_3))+y_3*((x-x_1)*(x-x_2))/((x_3-x_1)*(x_3-x_2)));
     float dosage = y;
 
-    uint32_t timeOpen = (uint32_t)(dosage / flowrate);
+    uint32_t timeOpen = (dosage / flowrate);
     delay->peristalticPump_delay = timeOpen;
-    ESP_LOGI(TAG, "Peristaltic Pump Delay: %ds", delay->peristalticPump_delay);
+    ESP_LOGI(TAG, "Peristaltic Pump Delay: %d ms", delay->peristalticPump_delay);
     }
     
 }

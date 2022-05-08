@@ -31,7 +31,7 @@ static const ds18x20_addr_t SENSOR_ADDR = 0x0701215cb8cf4128;
 #endif
 
 // Define VoltageDividerMultiplier Value
-static const float VoltageDividerMultipler = (17.00f/6.00f); // 120K+220K/220K
+static const float VoltageDividerMultipler = 1.00F; // 120K+220K/220K
 
 //ADC Channels
 #define DOSensorPin          ADC1_CHANNEL_6      /*!< ADC1 channel 6 is GPIO34 */
@@ -56,7 +56,7 @@ void adc_calibration_init(void)
     } else if (ret == ESP_ERR_INVALID_VERSION) {
         ESP_LOGW(TAG, "eFuse not burnt, skip software calibration");
     } else if (ret == ESP_OK) {
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_6, ADC_WIDTH_BIT_DEFAULT, 0, &adc1_chars);
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 0, &adc1_chars);
     } else {
         ESP_LOGE(TAG, "Invalid arg");
     }
