@@ -290,7 +290,7 @@ void vPeristalticPump(void *params)
 {
   gpio_pad_select_gpio(PERISTALTIC_PUMP_PIN);
   gpio_set_direction (PERISTALTIC_PUMP_PIN,GPIO_MODE_OUTPUT);
-  gpio_set_level(PERISTALTIC_PUMP_PIN, 1);
+  gpio_set_level(PERISTALTIC_PUMP_PIN, 0);
   vTaskDelay( pdMS_TO_TICKS(30 * 1000) ); // DELAY FOR 30 SECS
   ESP_LOGI(CONTROLS, "PERISTALTIC PUMP TASK START");
 
@@ -315,7 +315,7 @@ void vPeristalticPump(void *params)
       uint32_t vDelay = delays.peristalticPump_delay;
       if (vDelay > 0 && vDelay < MAX_DELAY_MS)
       {
-        gpio_set_level(PERISTALTIC_PUMP_PIN, 0);
+        gpio_set_level(PERISTALTIC_PUMP_PIN, 1);
         ESP_LOGI(CONTROLS, "PERISTALTIC PUMP ON: %d ms", vDelay);
         vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(vDelay) );
 
@@ -327,7 +327,7 @@ void vPeristalticPump(void *params)
         handle->set_item("lastPumpTime", lastPumpTime);
         handle->commit();
 
-        gpio_set_level(PERISTALTIC_PUMP_PIN, 1);
+        gpio_set_level(PERISTALTIC_PUMP_PIN, 0);
         ESP_LOGI(CONTROLS, "PERISTALTIC PUMP OFF");
         vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS((30 * 60 * 1000) - vDelay) );
       }
