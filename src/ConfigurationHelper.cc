@@ -59,14 +59,14 @@ void initConfigurationValues(DelayValues* delay)
 
     // START OF DELAY INITIALIZATION
     uint32_t submersiblePumpDelay = 5 * 60 * 1000;
-    uint32_t fishfeedDelay = 10 * 1000;
+    uint32_t fishfeedDelay = 5 * 1000;
 
     handle->get_item("submersiblePumpDelay", submersiblePumpDelay);
     handle->get_item("fishfeedDelay", fishfeedDelay);
 
     delay->heater_delay = 0;
     delay->peristalticPump_delay = 0;
-    delay->aerator_delay = 5 * 60 * 1000;
+    delay->aerator_delay = 9 * 60 * 1000;
 
     delay->fishfeed_delay = fishfeedDelay;
     delay->submersiblePump_delay = submersiblePumpDelay;

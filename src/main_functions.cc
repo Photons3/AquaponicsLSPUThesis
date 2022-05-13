@@ -359,8 +359,16 @@ void vAerator(void *params)
       ESP_LOGI(CONTROLS, "AERATOR OFF");
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(MAX_DELAY_MS - vDelay) );
     }
+    else if (vDelay >= MAX_DELAY_MS)
+    {
+      gpio_set_level(AERATOR_PIN, 0);
+      ESP_LOGI(CONTROLS, "AERATOR ON");
+      vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(MAX_DELAY_MS) );
+    }
     else
     {
+      gpio_set_level(AERATOR_PIN, 1);
+      ESP_LOGI(CONTROLS, "AERATOR OFF");
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(MAX_DELAY_MS));
     }
   }
@@ -389,8 +397,16 @@ void vSubmersiblePump(void* params)
       ESP_LOGI(CONTROLS, "SUBMERSIBLE PUMP OFF");
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(MAX_DELAY_MS - vDelay) );
     }
+    else if (vDelay >= MAX_DELAY_MS)
+    {
+      gpio_set_level(SUBMERSIBLE_PUMP_PIN, 0);
+      ESP_LOGI(CONTROLS, "SUBMERSIBLE PUMP ON: %d ms", vDelay);
+      vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(MAX_DELAY_MS) );
+    }
     else
     {
+      gpio_set_level(SUBMERSIBLE_PUMP_PIN, 1);
+      ESP_LOGI(CONTROLS, "SUBMERSIBLE PUMP OFF");
       vTaskDelayUntil( &xLastWakeTime, pdMS_TO_TICKS(MAX_DELAY_MS) );
     }
   }
