@@ -127,7 +127,7 @@ void setDelayValues(ConfigurationValues* val, DelayValues* delay, ForecastedValu
     x_2 = val->phLow + (val->phHigh - val->phLow)/8;
     x_3 = val->phLow + (val->phHigh - val->phLow)/4;
 
-    float highDelay = 120; // 120 ML max around 280 seconds
+    float highDelay = 60; // 120 ML max around 280 seconds
 
     y_1 = highDelay;
     y_2 = highDelay / 2;
