@@ -4,8 +4,8 @@ Automated Aquaponics System powered by Artificial Neural Network created for ESP
 Created from ESPIDF, ESPNN, Tensorflow for Microcontrollers and ESP-IDF Components library.
 
 Created as a capstone project for Laguna State Polytechnic University
-`Aquaponics System
-![image](https://github.com/Photons3/AquaponicsLSPUThesis/assets/18119113/7311f7c9-a31b-4d40-b6f1-90a68240caee)`
+Aquaponics System
+![image](https://github.com/Photons3/AquaponicsLSPUThesis/assets/18119113/7311f7c9-a31b-4d40-b6f1-90a68240caee)
 Supports different sensor acquitition and parameter controls
 ![image](https://github.com/Photons3/AquaponicsLSPUThesis/assets/18119113/76bed2a9-d8cb-455b-b96c-f760cb0a1e79)
 
