@@ -1,6 +1,9 @@
 # Aquaponics System ESP32
 Automated Aquaponics System powered by Artificial Neural Network created for ESP32.
 
+# Code for the Website Dashboard can be acessed through the github repostory Aquaponics-System-Dashboard
+https://github.com/Photons3/AquaponicsLSPUThesis
+
 Created from ESPIDF, ESPNN, Tensorflow for Microcontrollers and ESP-IDF Components library.
 
 Created as a capstone project for Laguna State Polytechnic University
